@@ -1,0 +1,11 @@
+export type Permission =
+  | "organization.view"
+  | "organization.update"
+  | "members.view"
+  | "members.invite"
+  | "members.update_role"
+  | "members.remove"
+  | "teams.view"
+  | "teams.create"
+  | "teams.update"
+  | "teams.delete"

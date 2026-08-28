@@ -1,0 +1,5 @@
+export type OrganizationType = "travel_club" | "league" | "tournament_operator" | "training_facility"
+export type OrganizationRole = "owner" | "admin" | "coach" | "team_manager" | "scorekeeper" | "viewer"
+export type MembershipStatus = "invited" | "active" | "suspended" | "removed"
+export type TeamStatus = "draft" | "active" | "inactive" | "archived"
+export type BaseballAgeGroup = "6U" | "7U" | "8U" | "9U" | "10U" | "11U" | "12U" | "13U" | "14U" | "15U" | "16U" | "17U" | "18U"
