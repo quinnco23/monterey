@@ -5,3 +5,5 @@ dist
 !.env.example
 .vscode
 .DS_Store
+.env.local
+.env.*.local
