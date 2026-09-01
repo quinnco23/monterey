@@ -20,9 +20,22 @@ import { ReserveResourcePage } from "./pages/reserve-resource-page"
 import { AdminBookingsPage } from "@/pages/admin-bookings-page"
 import { AdminRoute } from "./features/auth/admin-route"
 import { AdminResourcePage } from "./pages/admin-resource-page"
-//  import { AdminResourcesPage } from "./pages/admin-resources-page"
+import { TrainersPage } from "./pages/trainers-page"
+import { AdminTournamentPage } from "./pages/admin-tournament-page"
 
+import { CreateTournamentPage } from "./pages/create-tournament-page"
 
+import { MyReservationsPage } from "./pages/my-reservations-page"
+
+  import { AdminResourcesPage } from "./pages/admin-resources-page"
+
+  import { TournamentsPage } from "./pages/tournaments-page"
+
+  import { TournamentDetailPage } from "./pages/tournament-detail-page"
+
+  import { TeamsPage } from "./pages/teams-page"
+
+  import { AboutPage } from "./pages/about-page"
 export default function App() {
   return (
     <BrowserRouter>
@@ -36,42 +49,38 @@ export default function App() {
           <Route path="/register" element={<AuthPage mode="register" />} />
 
           <Route
-            path="/teams"
-            element={
-              <PlaceholderPage
-                title="Teams"
-                description="Public team profiles and organization team management will live here."
-              />
-            }
-          />
+  path="/teams"
+  element={<TeamsPage />}
+/>
 
-          <Route
-            path="/tournaments"
-            element={
-              <PlaceholderPage
-                title="Tournaments"
-                description="Browse upcoming events and register teams here."
-              />
-            }
-          />
+<Route
+  path="/tournaments"
+  element={<TournamentsPage />}
+/>
 
-          <Route
-            path="/about"
-            element={
-              <PlaceholderPage
-                title="About The League"
-                description=""
-              />
-            }
-          />
+<Route
+  path="/tournaments/:tournamentId"
+  element={<TournamentDetailPage />}
+/>
+
+<Route
+  path="/about"
+  element={<AboutPage />}
+/>
 
           <Route path="/book" element={<BookPage />} />
           <Route
             path="/book/resources/:resourceId"
             element={<BookingResourcePage />}
           />
+
+<Route
+  path="/book/trainers"
+  element={<TrainersPage />}
+/>
           <Route path="/book/fields" element={<FieldReservationsPage />} />
           <Route path="/book/fields/:fieldId" element={<FieldDetailPage />} />
+
 {/* PROTECTED USER ROUTES */}
 <Route element={<ProtectedRoute />}>
   <Route path="/dashboard" element={<DashboardPage />} />
@@ -106,6 +115,11 @@ export default function App() {
     path="/book/resources/:resourceId/reserve"
     element={<ReserveResourcePage />}
   />
+<Route
+  path="/dashboard/reservations"
+  element={<MyReservationsPage />}
+/>
+
 </Route>
 
 {/* PLATFORM ADMIN ROUTES */}
@@ -117,13 +131,26 @@ export default function App() {
   />
 <Route
   path="/admin/resources"
-  element={<AdminResourcePage />}
+  element={<AdminResourcesPage />}
 />
 
   <Route
     path="/admin/resources/:resourceId"
     element={<AdminResourcePage />}
   />
+  <Route
+  path="/admin/tournaments/new"
+  element={<CreateTournamentPage />}
+/>
+
+<Route
+  path="/admin/tournaments/:tournamentId"
+  element={<AdminTournamentPage />}
+/>
+
+
+
+
 
 </Route>
         </Routes>

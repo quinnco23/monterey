@@ -51,7 +51,7 @@ export function HomePage() {
 
           <p className="mt-7 max-w-3xl text-base leading-8 text-scoreboard-muted sm:text-lg">
             Summer baseball on the Monterey Bay. The dates are set, the preperations are being made
-    its time to  and spend the weekend playing baseball
+    its time to  and spend the weekend playing Ball
              on the California coast.
           </p>
 

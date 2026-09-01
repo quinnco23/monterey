@@ -220,7 +220,11 @@ import {
                   >
                     Create Team
                   </Button>
+
+                  
                 </Link>
+
+                
   
                 <Link
                   to={`/dashboard/organizations/${organization.id}/settings`}
@@ -243,6 +247,24 @@ import {
                     Settings
                   </Button>
                 </Link>
+
+                <Link
+  to="/dashboard/reservations"
+  className="
+    border
+    border-scoreboard-cream/30
+    bg-scoreboard-green
+    px-5
+    py-4
+    text-xs
+    font-black
+    uppercase
+    tracking-[0.12em]
+    hover:border-scoreboard-amber
+  "
+>
+  My Reservations
+</Link>
   
               </div>
             </div>

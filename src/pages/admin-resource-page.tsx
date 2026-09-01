@@ -58,6 +58,21 @@ export function AdminResourcePage() {
   const [addingSlot, setAddingSlot] = useState(false)
   const [error, setError] = useState("")
 
+  const [bulkStartDate, setBulkStartDate] = useState("")
+const [bulkEndDate, setBulkEndDate] = useState("")
+
+const [bulkStartTime, setBulkStartTime] = useState("08:00")
+const [bulkEndTime, setBulkEndTime] = useState("20:00")
+
+const [slotMinutes, setSlotMinutes] = useState("120")
+
+const [selectedDays, setSelectedDays] = useState<number[]>([
+  5,
+  6,
+])
+
+const [generating, setGenerating] = useState(false)
+
   async function loadResource() {
     if (!resourceId) {
       setError("Missing resource ID.")
@@ -237,6 +252,189 @@ export function AdminResourcePage() {
     setSlots((current) =>
       current.filter((slot) => slot.id !== slotId)
     )
+  }
+
+  function toggleDay(day: number) {
+    setSelectedDays((current) =>
+      current.includes(day)
+        ? current.filter((value) => value !== day)
+        : [...current, day]
+    )
+  }
+
+  async function handleGenerateAvailability(
+    e: React.FormEvent
+  ) {
+    e.preventDefault()
+  
+    if (!resourceId) return
+  
+    if (!bulkStartDate || !bulkEndDate) {
+      setError("Start date and end date are required.")
+      return
+    }
+  
+    if (selectedDays.length === 0) {
+      setError("Select at least one day of the week.")
+      return
+    }
+  
+    const minutes = Number(slotMinutes)
+  
+    if (!minutes || minutes <= 0) {
+      setError("Slot length must be greater than zero.")
+      return
+    }
+  
+    setGenerating(true)
+    setError("")
+  
+    const rangeStart = new Date(
+      `${bulkStartDate}T00:00:00`
+    )
+  
+    const rangeEnd = new Date(
+      `${bulkEndDate}T00:00:00`
+    )
+  
+    if (rangeEnd < rangeStart) {
+      setError("End date must be after start date.")
+      setGenerating(false)
+      return
+    }
+  
+    const rows: {
+      resource_id: string
+      start_time: string
+      end_time: string
+      status: string
+    }[] = []
+  
+    const currentDate = new Date(rangeStart)
+  
+    while (currentDate <= rangeEnd) {
+      if (selectedDays.includes(currentDate.getDay())) {
+        const dateString = [
+          currentDate.getFullYear(),
+          String(currentDate.getMonth() + 1).padStart(2, "0"),
+          String(currentDate.getDate()).padStart(2, "0"),
+        ].join("-")
+  
+        const dayStart = new Date(
+          `${dateString}T${bulkStartTime}:00`
+        )
+  
+        const dayEnd = new Date(
+          `${dateString}T${bulkEndTime}:00`
+        )
+  
+        let slotStart = new Date(dayStart)
+  
+        while (slotStart < dayEnd) {
+          const slotEnd = new Date(
+            slotStart.getTime() +
+              minutes * 60 * 1000
+          )
+  
+          if (slotEnd > dayEnd) {
+            break
+          }
+  
+          rows.push({
+            resource_id: resourceId,
+            start_time: slotStart.toISOString(),
+            end_time: slotEnd.toISOString(),
+            status: "available",
+          })
+  
+          slotStart = slotEnd
+        }
+      }
+  
+      currentDate.setDate(
+        currentDate.getDate() + 1
+      )
+    }
+  
+    if (rows.length === 0) {
+      setError(
+        "No availability slots were generated from those settings."
+      )
+      setGenerating(false)
+      return
+    }
+  
+    const { data: existing, error: existingError } =
+      await supabase
+        .from("resource_availability")
+        .select(`
+          start_time,
+          end_time
+        `)
+        .eq("resource_id", resourceId)
+        .gte(
+          "start_time",
+          rangeStart.toISOString()
+        )
+        .lte(
+          "start_time",
+          new Date(
+            rangeEnd.getTime() +
+              24 * 60 * 60 * 1000
+          ).toISOString()
+        )
+  
+    if (existingError) {
+      setError(existingError.message)
+      setGenerating(false)
+      return
+    }
+  
+    const existingKeys = new Set(
+      (existing ?? []).map(
+        (slot) =>
+          `${slot.start_time}|${slot.end_time}`
+      )
+    )
+  
+    const newRows = rows.filter(
+      (row) =>
+        !existingKeys.has(
+          `${row.start_time}|${row.end_time}`
+        )
+    )
+  
+    if (newRows.length === 0) {
+      setError(
+        "All generated slots already exist."
+      )
+      setGenerating(false)
+      return
+    }
+  
+    const { data: insertedRows, error: insertError } = await supabase
+    .from("resource_availability")
+    .upsert(newRows, {
+      onConflict: "resource_id,start_time,end_time",
+      ignoreDuplicates: true,
+    })
+    .select()
+
+console.log("BULK INSERT:", {
+  insertedRows,
+  insertError,
+  count: newRows.length,
+})
+
+if (insertError) {
+  setError(insertError.message)
+  setGenerating(false)
+  return
+}
+
+setGenerating(false)
+
+await loadResource()
   }
 
   if (loading) {
@@ -427,9 +625,190 @@ export function AdminResourcePage() {
           </form>
 
         </div>
+        
 
         {/* AVAILABILITY */}
         <div className="space-y-6">
+
+{/* BULK AVAILABILITY */}
+<div className="scoreboard-panel p-4">
+  <form
+    onSubmit={handleGenerateAvailability}
+    className="border border-scoreboard-cream/30 bg-scoreboard-green p-6"
+  >
+    <p className="scoreboard-label text-scoreboard-amber">
+      Schedule
+    </p>
+
+    <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.07em]">
+      Bulk Availability
+    </h2>
+
+    <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
+      Generate recurring reservation windows for this resource.
+    </p>
+
+    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+
+      <label>
+        <span className="scoreboard-label text-scoreboard-cream">
+          Start Date
+        </span>
+
+        <input
+          type="date"
+          value={bulkStartDate}
+          onChange={(e) => setBulkStartDate(e.target.value)}
+          className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+        />
+      </label>
+
+      <label>
+        <span className="scoreboard-label text-scoreboard-cream">
+          End Date
+        </span>
+
+        <input
+          type="date"
+          value={bulkEndDate}
+          onChange={(e) => setBulkEndDate(e.target.value)}
+          className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+        />
+      </label>
+
+      <label>
+        <span className="scoreboard-label text-scoreboard-cream">
+          Opening Time
+        </span>
+
+        <input
+          type="time"
+          value={bulkStartTime}
+          onChange={(e) => setBulkStartTime(e.target.value)}
+          className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+        />
+      </label>
+
+      <label>
+        <span className="scoreboard-label text-scoreboard-cream">
+          Closing Time
+        </span>
+
+        <input
+          type="time"
+          value={bulkEndTime}
+          onChange={(e) => setBulkEndTime(e.target.value)}
+          className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+        />
+      </label>
+
+      <label className="sm:col-span-2">
+        <span className="scoreboard-label text-scoreboard-cream">
+          Slot Length
+        </span>
+
+        <select
+          value={slotMinutes}
+          onChange={(e) => setSlotMinutes(e.target.value)}
+          className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+        >
+          <option value="30">30 Minutes</option>
+          <option value="60">1 Hour</option>
+          <option value="90">90 Minutes</option>
+          <option value="120">2 Hours</option>
+          <option value="180">3 Hours</option>
+        </select>
+      </label>
+
+    </div>
+
+    <div className="mt-6">
+      <p className="scoreboard-label text-scoreboard-cream">
+        Days
+      </p>
+
+      <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
+
+        {[
+          [0, "Sun"],
+          [1, "Mon"],
+          [2, "Tue"],
+          [3, "Wed"],
+          [4, "Thu"],
+          [5, "Fri"],
+          [6, "Sat"],
+        ].map(([day, label]) => {
+          const value = Number(day)
+          const selected = selectedDays.includes(value)
+
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggleDay(value)}
+              className={
+                selected
+                  ? `
+                    border
+                    border-scoreboard-amber
+                    bg-scoreboard-amber
+                    px-3
+                    py-3
+                    text-xs
+                    font-black
+                    uppercase
+                    text-scoreboard-dark
+                  `
+                  : `
+                    border
+                    border-scoreboard-cream/30
+                    px-3
+                    py-3
+                    text-xs
+                    font-black
+                    uppercase
+                    text-scoreboard-cream
+                    hover:border-scoreboard-amber
+                  `
+              }
+            >
+              {label}
+            </button>
+          )
+        })}
+
+      </div>
+    </div>
+    <p className="mb-2 text-xs text-scoreboard-amber">
+  generating: {String(generating)}
+</p>
+
+<p className="mb-2 text-xs text-scoreboard-amber">
+  generating: {String(generating)}
+</p>
+
+<button
+  type="submit"
+  disabled={generating}
+  className="
+    mt-7
+    w-full
+    bg-scoreboard-cream
+    px-4
+    py-3
+    font-black
+    uppercase
+    tracking-[0.14em]
+    text-scoreboard-dark
+  "
+>
+  {generating
+    ? "Generating..."
+    : "Generate Availability"}
+</button>
+  </form>
+</div>
+          
 
           {/* ADD SLOT */}
           <div className="scoreboard-panel p-4">
@@ -442,6 +821,8 @@ export function AdminResourcePage() {
               <p className="scoreboard-label text-scoreboard-amber">
                 Schedule
               </p>
+
+              
 
               <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.07em]">
                 Add Availability

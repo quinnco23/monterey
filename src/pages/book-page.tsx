@@ -27,27 +27,27 @@ const bookingCategories = [
   {
     title: "Training",
     eyebrow: "Coaches & Instructors",
-    href: "/book/training",
+    href: "/book/trainers",
     icon: UserRound,
   },
   {
     title: "Fields",
-    eyebrow: "Outdoor Diamonds",
+    eyebrow: "Diamonds in Santa Cruz",
     href: "/book/fields",
     icon: MapPin,
   },
-  {
-    title: "Facilities",
-    eyebrow: "Indoor & Outdoor",
-    href: "/book/facilities",
-    icon: Building2,
-  },
-  {
-    title: "Machines",
-    eyebrow: "Equipment Time",
-    href: "/book/machines",
-    icon: CircleDot,
-  },
+  // {
+  //   title: "Facilities",
+  //   eyebrow: "Indoor & Outdoor",
+  //   href: "/book/facilities",
+  //   icon: Building2,
+  // },
+  // {
+  //   title: "Machines",
+  //   eyebrow: "Equipment Time",
+  //   href: "/book/machines",
+  //   icon: CircleDot,
+  // },
 ]
 
 export function BookPage() {
