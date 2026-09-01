@@ -1,355 +1,321 @@
+import { useEffect, useState } from "react"
 import {
-    ArrowRight,
-    Building2,
-    CircleDot,
-    Dumbbell,
-    MapPin,
-    Search,
-    UserRound,
-  } from "lucide-react"
-  import { Link } from "react-router-dom"
-  
-  import { Button } from "@/components/ui/button"
-  
-  const bookingCategories = [
-    {
-      title: "Training",
-      eyebrow: "Coaches & Instructors",
-      description:
-        "Book private hitting, pitching, catching, fielding, and strength sessions.",
-      href: "/book/training",
-      icon: UserRound,
-      action: "Find training",
-    },
-    {
-      title: "Fields",
-      eyebrow: "Outdoor Diamonds",
-      description:
-        "Find baseball fields for practices, scrimmages, team workouts, and events.",
-      href: "/book/fields",
-      icon: MapPin,
-      action: "Find a field",
-    },
-    {
-      title: "Facilities",
-      eyebrow: "Indoor & Outdoor",
-      description:
-        "Reserve batting cages, indoor turf, pitching lanes, gyms, and team spaces.",
-      href: "/book/facilities",
-      icon: Building2,
-      action: "Find a facility",
-    },
-    {
-      title: "Machines",
-      eyebrow: "Equipment Time",
-      description:
-        "Reserve pitching machines, HitTrax-style systems, and training equipment.",
-      href: "/book/machines",
-      icon: CircleDot,
-      action: "Find a machine",
-    },
-  ]
-  
-  const featured = [
-    {
-      title: "Polo Grounds — Field 2",
-      type: "Baseball Field",
-      location: "Aptos, CA",
-      availability: "Saturday • 12 PM – 2 PM",
-      href: "/book/fields/polo-grounds-field-2",
-    },
-    {
-      title: "Pitching Lane 1",
-      type: "Training Facility",
-      location: "Santa Cruz, CA",
-      availability: "Today • 5 PM – 6 PM",
-      href: "/book/facilities/pitching-lane-1",
-    },
-    {
-      title: "Coach Mike Anderson",
-      type: "Pitching Instructor",
-      location: "Santa Cruz, CA",
-      availability: "Thursday • 6 PM",
-      href: "/book/training/mike-anderson",
-    },
-  ]
-  
-  export function BookPage() {
-    return (
-      <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
-  
-        {/* HERO */}
-        <section className="border-b border-scoreboard-cream/20 bg-scoreboard-green">
-          <div className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
-  
-            <p className="scoreboard-label text-scoreboard-amber">
-              Reservations
-            </p>
-  
-            <div className="mt-4 grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-end">
-  
-              <div>
-                <h1 className="max-w-4xl text-5xl font-black uppercase leading-[0.95] tracking-[0.05em] sm:text-6xl">
-                  Book Baseball
-                </h1>
-  
-                <p className="mt-6 max-w-2xl text-base leading-8 text-scoreboard-muted sm:text-lg">
-                  Find a field, reserve a facility, book a trainer, or schedule
-                  pitching-machine time from one baseball-first booking system.
-                </p>
-              </div>
-  
-              {/* SEARCH BOARD */}
-              <div className="border border-scoreboard-cream/25 bg-scoreboard-dark p-5">
-  
-                <div className="scoreboard-label">
-                  Search Availability
-                </div>
-  
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-  
-                  <input
-                    type="date"
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      px-3
-                      py-3
-                      text-scoreboard-dark
-                    "
-                  />
-  
-                  <select
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      px-3
-                      py-3
-                      text-scoreboard-dark
-                    "
-                  >
-                    <option>Any time</option>
-                    <option>Morning</option>
-                    <option>Afternoon</option>
-                    <option>Evening</option>
-                  </select>
-  
-                  <select
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      px-3
-                      py-3
-                      text-scoreboard-dark
-                    "
-                  >
-                    <option>All booking types</option>
-                    <option>Training</option>
-                    <option>Fields</option>
-                    <option>Facilities</option>
-                    <option>Machines</option>
-                  </select>
-  
-                  <select
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      px-3
-                      py-3
-                      text-scoreboard-dark
-                    "
-                  >
-                    <option>Santa Cruz County</option>
-                    <option>Santa Cruz</option>
-                    <option>Aptos</option>
-                    <option>Soquel</option>
-                    <option>Scotts Valley</option>
-                    <option>Watsonville</option>
-                  </select>
-  
-                </div>
-  
-                <Button
-                  className="
-                    mt-3
-                    w-full
-                    rounded-none
-                    bg-scoreboard-cream
-                    font-black
-                    uppercase
-                    tracking-[0.14em]
-                    text-scoreboard-dark
-                    hover:bg-scoreboard-amber
-                    hover:text-scoreboard-dark
-                  "
-                >
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
-                </Button>
-  
-              </div>
+  ArrowRight,
+  Building2,
+  CircleDot,
+  MapPin,
+  Search,
+  UserRound,
+} from "lucide-react"
+import { Link } from "react-router-dom"
+
+import { Button } from "@/components/ui/button"
+import { supabase } from "@/lib/supabase"
+
+type BookingResource = {
+  id: string
+  name: string
+  resource_type: string
+  description: string | null
+  city: string | null
+  state: string | null
+  hourly_rate: number | null
+  active: boolean
+}
+
+const bookingCategories = [
+  {
+    title: "Training",
+    eyebrow: "Coaches & Instructors",
+    href: "/book/training",
+    icon: UserRound,
+  },
+  {
+    title: "Fields",
+    eyebrow: "Outdoor Diamonds",
+    href: "/book/fields",
+    icon: MapPin,
+  },
+  {
+    title: "Facilities",
+    eyebrow: "Indoor & Outdoor",
+    href: "/book/facilities",
+    icon: Building2,
+  },
+  {
+    title: "Machines",
+    eyebrow: "Equipment Time",
+    href: "/book/machines",
+    icon: CircleDot,
+  },
+]
+
+export function BookPage() {
+  const [resources, setResources] = useState<BookingResource[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    async function loadResources() {
+      setLoading(true)
+      setError("")
+
+      const { data, error } = await supabase
+        .from("booking_resources")
+        .select(`
+          id,
+          name,
+          resource_type,
+          description,
+          city,
+          state,
+          hourly_rate,
+          active
+        `)
+        .eq("active", true)
+        .order("name")
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      setResources(data ?? [])
+      setLoading(false)
+    }
+
+    void loadResources()
+  }, [])
+
+  return (
+    <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
+
+      <section className="border-b border-scoreboard-cream/20 bg-scoreboard-green">
+        <div className="mx-auto max-w-7xl px-6 py-16">
+
+          <p className="scoreboard-label text-scoreboard-amber">
+            Reservations
+          </p>
+
+          <div className="mt-4 grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-end">
+
+            <div>
+              <h1 className="text-5xl font-black uppercase tracking-[0.05em] sm:text-6xl">
+                Book Santa Cruz 
+              </h1>
+
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-scoreboard-muted">
+                Find a field, throw a tourney play more Baseball. 
+              </p>
             </div>
+
+            <div className="border border-scoreboard-cream/25 bg-scoreboard-dark p-5">
+              <p className="scoreboard-label">
+                Search Availability
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+                <input
+                  type="date"
+                  className="rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+                />
+
+                <select
+                  className="rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark"
+                >
+                  <option>All Types</option>
+                  <option>Field</option>
+                  <option>Facility</option>
+                  <option>Batting Cage</option>
+                  <option>Pitching Lane</option>
+                  <option>Pitching Machine</option>
+                  <option>Trainer</option>
+                </select>
+
+              </div>
+
+              <Button
+                className="mt-3 w-full rounded-none bg-scoreboard-cream font-black uppercase tracking-[0.14em] text-scoreboard-dark hover:bg-scoreboard-amber"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </div>
+
           </div>
-        </section>
-  
-        {/* BOOKING CATEGORIES */}
-        <section className="mx-auto max-w-7xl px-6 py-12">
-  
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-12">
+
+        <div className="mb-6 border-b border-scoreboard-cream/20 pb-4">
+          <p className="scoreboard-label">
+            Browse
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
+            Booking Categories
+          </h2>
+        </div>
+
+        <div className="grid border-l border-t border-scoreboard-cream/25 md:grid-cols-2">
+
+          {bookingCategories.map((category) => {
+            const Icon = category.icon
+
+            return (
+              <Link
+                key={category.title}
+                to={category.href}
+                className="group border-b border-r border-scoreboard-cream/25 bg-scoreboard-green p-6 transition-colors hover:bg-scoreboard-light"
+              >
+                <div className="flex items-start justify-between">
+
+                  <div>
+                    <p className="scoreboard-label text-scoreboard-amber">
+                      {category.eyebrow}
+                    </p>
+
+                    <h3 className="mt-3 text-2xl font-black uppercase tracking-[0.08em]">
+                      {category.title}
+                    </h3>
+                  </div>
+
+                  <Icon className="h-6 w-6 text-scoreboard-amber" />
+
+                </div>
+
+                <div className="mt-8 flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em]">
+                  Browse
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </Link>
+            )
+          })}
+
+        </div>
+      </section>
+
+      <section className="border-t border-scoreboard-cream/15 bg-scoreboard-green/30">
+        <div className="mx-auto max-w-7xl px-6 py-12">
+
           <div className="mb-6 flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
-  
+
             <div>
               <p className="scoreboard-label">
-                What Do You Need?
+                Available Resources
               </p>
-  
+
               <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
-                Booking Categories
+                Book Now
               </h2>
             </div>
-  
-            <div className="hidden text-right sm:block">
-              <div className="scoreboard-label">
-                SCBC
+
+            {!loading && !error && (
+              <div className="scoreboard-number text-2xl text-scoreboard-amber">
+                {resources.length}
               </div>
-  
-              <div className="scoreboard-number mt-1 text-xl text-scoreboard-amber">
-                BOOK
-              </div>
-            </div>
-  
+            )}
+
           </div>
-  
-          <div className="grid border-l border-t border-scoreboard-cream/25 md:grid-cols-2">
-  
-            {bookingCategories.map((category) => {
-              const Icon = category.icon
-  
-              return (
-                <Link
-                  key={category.title}
-                  to={category.href}
-                  className="
-                    group
-                    border-b
-                    border-r
-                    border-scoreboard-cream/25
-                    bg-scoreboard-green
-                    p-6
-                    transition-colors
-                    hover:bg-scoreboard-light
-                    sm:p-8
-                  "
-                >
-  
-                  <div className="flex items-start justify-between gap-6">
-  
-                    <div>
-                      <p className="scoreboard-label text-scoreboard-amber">
-                        {category.eyebrow}
-                      </p>
-  
-                      <h3 className="mt-3 text-2xl font-black uppercase tracking-[0.08em]">
-                        {category.title}
-                      </h3>
-                    </div>
-  
-                    <div className="border border-scoreboard-cream/25 p-3">
-                      <Icon className="h-6 w-6 text-scoreboard-amber" />
-                    </div>
-  
-                  </div>
-  
-                  <p className="mt-6 max-w-md text-sm leading-7 text-scoreboard-muted">
-                    {category.description}
-                  </p>
-  
-                  <div className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-scoreboard-cream group-hover:text-scoreboard-amber">
-                    {category.action}
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-  
-                </Link>
-              )
-            })}
-  
-          </div>
-        </section>
-  
-        {/* FEATURED */}
-        <section className="border-t border-scoreboard-cream/15 bg-scoreboard-green/40">
-  
-          <div className="mx-auto max-w-7xl px-6 py-12">
-  
-            <div className="mb-6 flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
-  
-              <div>
-                <p className="scoreboard-label">
-                  Quick Booking
-                </p>
-  
-                <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
-                  Featured Availability
-                </h2>
-              </div>
-  
+
+          {loading && (
+            <div className="border border-scoreboard-cream/20 bg-scoreboard-green p-6">
+              <p className="scoreboard-label">
+                Loading Resources...
+              </p>
             </div>
-  
-            <div className="grid gap-px bg-scoreboard-cream/20 lg:grid-cols-3">
-  
-              {featured.map((item) => (
+          )}
+
+          {error && (
+            <div className="border border-scoreboard-red/60 bg-scoreboard-green p-6">
+              <p className="scoreboard-label text-scoreboard-amber">
+                Unable To Load Resources
+              </p>
+
+              <p className="mt-3 text-sm text-scoreboard-muted">
+                {error}
+              </p>
+            </div>
+          )}
+
+          {!loading && !error && resources.length === 0 && (
+            <div className="border border-scoreboard-cream/20 bg-scoreboard-green p-8">
+              <h3 className="text-xl font-black uppercase">
+                No Bookable Resources Yet
+              </h3>
+
+              <p className="mt-3 text-sm text-scoreboard-muted">
+                Add resources in Supabase to begin accepting reservations.
+              </p>
+            </div>
+          )}
+
+          {!loading && !error && resources.length > 0 && (
+            <div className="grid gap-px bg-scoreboard-cream/20 md:grid-cols-2 lg:grid-cols-3">
+
+              {resources.map((resource) => (
                 <Link
-                  key={item.title}
-                  to={item.href}
-                  className="
-                    bg-scoreboard-green
-                    p-6
-                    transition-colors
-                    hover:bg-scoreboard-light
-                  "
+                  key={resource.id}
+                  to={`/book/resources/${resource.id}`}
+                  className="group bg-scoreboard-green p-6 transition-colors hover:bg-scoreboard-light"
                 >
-  
+
                   <p className="scoreboard-label text-scoreboard-amber">
-                    {item.type}
+                    {resource.resource_type.replaceAll("_", " ")}
                   </p>
-  
+
                   <h3 className="mt-3 text-xl font-black uppercase tracking-[0.05em]">
-                    {item.title}
+                    {resource.name}
                   </h3>
-  
+
+                  {resource.description && (
+                    <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
+                      {resource.description}
+                    </p>
+                  )}
+
                   <div className="mt-5 space-y-2 text-sm text-scoreboard-muted">
-  
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-scoreboard-amber" />
-                      {item.location}
-                    </div>
-  
-                    <div className="flex items-center gap-2">
-                      <Dumbbell className="h-4 w-4 text-scoreboard-amber" />
-                      {item.availability}
-                    </div>
-  
+
+                    {(resource.city || resource.state) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-scoreboard-amber" />
+
+                        {[resource.city, resource.state]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+                    )}
+
+                    {resource.hourly_rate !== null && (
+                      <div className="scoreboard-number text-scoreboard-cream">
+                        ${Number(resource.hourly_rate).toFixed(2)} / HR
+                      </div>
+                    )}
+
                   </div>
-  
-                  <div className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-scoreboard-cream">
-                    View times
-                    <ArrowRight className="h-4 w-4" />
+
+                  <div className="mt-6 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
+
+                    <span className="text-xs font-black uppercase tracking-[0.14em]">
+                      View Availability
+                    </span>
+
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+
                   </div>
-  
+
                 </Link>
               ))}
-  
+
             </div>
-          </div>
-        </section>
-  
-      </main>
-    )
-  }
+          )}
+
+        </div>
+      </section>
+
+    </main>
+  )
+}

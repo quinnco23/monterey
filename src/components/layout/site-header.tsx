@@ -32,8 +32,9 @@ export function SiteHeader() {
         {[
           ["Tournaments", "/tournaments"],
           ["Teams", "/teams"],
+           ["Book", "/book"],
           ["About", "/about"],
-          ["Book", "/book"],
+         
         ].map(([label, to]) => (
           <Link
             key={to}

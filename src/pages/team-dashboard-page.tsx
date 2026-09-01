@@ -25,21 +25,51 @@ type Team = {
   status: string
 }
 
+type Player = {
+  id: string
+  first_name: string
+  last_name: string
+  age: number | null
+}
+
+type RosterMember = {
+  id: string
+  jersey_number: string | null
+  primary_position: string | null
+  secondary_position: string | null
+  roster_status: string
+  player: Player | null
+}
+
+type SupabaseRosterMember = {
+  id: string
+  jersey_number: string | null
+  primary_position: string | null
+  secondary_position: string | null
+  roster_status: string
+  player: Player | Player[] | null
+}
+
 export function TeamDashboardPage() {
   const { organizationId, teamId } = useParams()
 
   const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [roster, setRoster] = useState<RosterMember[]>([])
 
   useEffect(() => {
     async function loadTeam() {
-      if (!organizationId || !teamId) return
+      if (!organizationId || !teamId) {
+        setError("Missing organization or team ID.")
+        setLoading(false)
+        return
+      }
 
       setLoading(true)
       setError("")
 
-      const { data, error } = await supabase
+      const { data: teamData, error: teamError } = await supabase
         .from("teams")
         .select(`
           id,
@@ -57,20 +87,63 @@ export function TeamDashboardPage() {
         .eq("organization_id", organizationId)
         .single()
 
-      if (error) {
-        setError(error.message)
+      if (teamError) {
+        setError(teamError.message)
         setLoading(false)
         return
       }
 
-      setTeam(data)
-      setLoading(false)
+      const { data: rosterData, error: rosterError } = await supabase
+  .from("team_roster_members")
+  .select(`
+    id,
+    jersey_number,
+    primary_position,
+    secondary_position,
+    roster_status,
+    player:players!team_roster_members_player_id_fkey (
+      id,
+      first_name,
+      last_name,
+      age
+    )
+  `)
+  .eq("team_id", teamId)
+  .eq("roster_status", "active")
+
+if (rosterError) {
+  setError(rosterError.message)
+  setLoading(false)
+  return
+}
+
+const rawRoster = (rosterData ?? []) as unknown as SupabaseRosterMember[]
+
+const normalizedRoster: RosterMember[] = rawRoster.map((member) => ({
+  id: member.id,
+  jersey_number: member.jersey_number,
+  primary_position: member.primary_position,
+  secondary_position: member.secondary_position,
+  roster_status: member.roster_status,
+
+  player: Array.isArray(member.player)
+    ? member.player[0] ?? null
+    : member.player ?? null,
+}))
+
+setTeam(teamData)
+setRoster(normalizedRoster)
+setLoading(false)
+      console.log("RAW ROSTER DATA:", rosterData)
+console.log("ROSTER ERROR:", rosterError)
     }
 
     void loadTeam()
   }, [organizationId, teamId])
 
-  if (loading) {
+  
+
+  if (loading)  {
     return (
       <main className="min-h-screen bg-scoreboard-dark px-6 py-12 text-scoreboard-cream">
         <div className="mx-auto max-w-7xl">
@@ -151,23 +224,27 @@ export function TeamDashboardPage() {
 
             <div className="flex flex-wrap gap-3">
 
-              <Button
-                className="
-                  rounded-none
-                  border
-                  border-scoreboard-cream
-                  bg-scoreboard-cream
-                  font-black
-                  uppercase
-                  tracking-[0.12em]
-                  text-scoreboard-dark
-                  hover:bg-scoreboard-amber
-                  hover:text-scoreboard-dark
-                "
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Player
-              </Button>
+              <Link
+  to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/new`}
+>
+  <Button
+    className="
+      rounded-none
+      border
+      border-scoreboard-cream
+      bg-scoreboard-cream
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-amber
+      hover:text-scoreboard-dark
+    "
+  >
+    <Plus className="mr-2 h-4 w-4" />
+    Add Player
+  </Button>
+</Link>
 
               <Button
                 variant="outline"
@@ -198,10 +275,10 @@ export function TeamDashboardPage() {
         <div className="grid border-l border-t border-scoreboard-cream/25 sm:grid-cols-2 lg:grid-cols-4">
 
           <StatBlock
-            label="Players"
-            value="0"
-            icon={Users}
-          />
+  label="Players"
+  value={String(roster.length)}
+  icon={Users}
+/>
 
           <StatBlock
             label="Games"
@@ -227,83 +304,109 @@ export function TeamDashboardPage() {
       {/* MAIN TEAM AREA */}
       <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-14 lg:grid-cols-[1.4fr_.6fr]">
 
-        {/* ROSTER */}
-        <div className="scoreboard-panel p-4">
+        {roster.length === 0 ? (
+  <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
+    <Users className="h-9 w-9 text-scoreboard-amber" />
 
-          <div className="min-h-[420px] border border-scoreboard-cream/30 bg-scoreboard-green p-6">
+    <h3 className="mt-5 text-xl font-black uppercase tracking-[0.08em]">
+      Build Your Roster
+    </h3>
 
-            <div className="flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
+    <p className="mt-3 max-w-md text-sm leading-7 text-scoreboard-muted">
+      Add players to this team or import an existing roster from GameOn.
+    </p>
+  </div>
+) : (
+  <div className="mt-4">
 
-              <div>
-                <p className="scoreboard-label text-scoreboard-amber">
-                  Team
-                </p>
+  {/* ROSTER HEADER */}
+  <div className="flex items-center justify-between border-b border-scoreboard-cream/20 pb-3">
 
-                <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.07em]">
-                  Roster
-                </h2>
-              </div>
+    <div className="grid flex-1 grid-cols-[60px_1fr_80px]">
+      <span className="scoreboard-label">
+        No.
+      </span>
 
-              <div className="scoreboard-number text-3xl">
-                00
-              </div>
+      <span className="scoreboard-label">
+        Player
+      </span>
 
-            </div>
+      <span className="scoreboard-label text-right">
+        Pos
+      </span>
+    </div>
 
-            {/* EMPTY ROSTER */}
-            <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
+    <Link
+      to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/new`}
+      className="
+        ml-5
+        shrink-0
+        border
+        border-scoreboard-cream/40
+        px-3
+        py-2
+        text-[10px]
+        font-black
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-cream
+        transition-colors
+        hover:border-scoreboard-amber
+        hover:bg-scoreboard-amber
+        hover:text-scoreboard-dark
+      "
+    >
+      + Add Player
+    </Link>
 
-              <Users className="h-9 w-9 text-scoreboard-amber" />
+  </div>
 
-              <h3 className="mt-5 text-xl font-black uppercase tracking-[0.08em]">
-                Build Your Roster
-              </h3>
+  {/* ROSTER ROWS */}
+  {roster.map((member) => (
+ <Link
+    key={member.id}
+    to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player?.id}/edit`}
+    className="
+      group
+      grid
+      grid-cols-[60px_1fr_80px]
+      items-center
+      border-b
+      border-scoreboard-cream/15
+      py-4
+      transition-colors
+      hover:bg-scoreboard-light
+    "
+  >
+      <span className="scoreboard-number text-xl text-scoreboard-amber">
+        {member.jersey_number || "--"}
+      </span>
 
-              <p className="mt-3 max-w-md text-sm leading-7 text-scoreboard-muted">
-                Add players to this team or import an existing
-                roster from GameOn.
-              </p>
+   <div>
+  <p className="font-black uppercase tracking-[0.05em]">
+    {member.player?.first_name ?? "Unknown"}{" "}
+    {member.player?.last_name ?? "Player"}
+  </p>
 
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
+  {member.player?.age && (
+    <p className="mt-1 text-xs text-scoreboard-muted">
+      Class of {member.player.age}
+    </p>
+  )}
+</div>
 
-                <Button
-                  className="
-                    rounded-none
-                    bg-scoreboard-cream
-                    font-black
-                    uppercase
-                    tracking-[0.12em]
-                    text-scoreboard-dark
-                    hover:bg-scoreboard-amber
-                  "
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Player
-                </Button>
+      <span className="scoreboard-number text-right">
+        {member.primary_position || "UTIL"}
+      </span>
 
-                <Button
-                  variant="outline"
-                  className="
-                    rounded-none
-                    border-scoreboard-cream/40
-                    bg-transparent
-                    font-black
-                    uppercase
-                    tracking-[0.12em]
-                    text-scoreboard-cream
-                    hover:bg-scoreboard-light
-                    hover:text-scoreboard-cream
-                  "
-                >
-                  Import From GameOn
-                </Button>
+      <span className="scoreboard-number text-right transition-colors group-hover:text-scoreboard-amber">
+  {member.primary_position || "UTIL"}
+</span>
+    </Link>
+  ))}
 
-              </div>
-
-            </div>
-
-          </div>
-        </div>
+</div>
+)}
 
         {/* SIDEBAR */}
         <div className="space-y-6">
