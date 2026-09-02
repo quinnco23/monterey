@@ -27,15 +27,25 @@ import { CreateTournamentPage } from "./pages/create-tournament-page"
 
 import { MyReservationsPage } from "./pages/my-reservations-page"
 
-  import { AdminResourcesPage } from "./pages/admin-resources-page"
+import { AdminResourcesPage } from "./pages/admin-resources-page"
 
-  import { TournamentsPage } from "./pages/tournaments-page"
+import { TournamentsPage } from "./pages/tournaments-page"
 
-  import { TournamentDetailPage } from "./pages/tournament-detail-page"
+import { TournamentDetailPage } from "./pages/tournament-detail-page"
 
-  import { TeamsPage } from "./pages/teams-page"
+import { TeamsPage } from "./pages/teams-page"
 
-  import { AboutPage } from "./pages/about-page"
+import { AboutPage } from "./pages/about-page"
+
+import { ForgotPasswordPage } from "./pages/forgot-password-page"
+import { UpdatePasswordPage } from "./pages/update-password-page"
+import { OrganizationSchedulePage } from "./pages/organization-schedule-page"
+import { CreateOrganizationEventPage } from "./pages/create-organization-event-page"
+
+import { EditOrganizationEventPage } from "./pages/edit-org-event"
+import { TeamProfilePage } from "./team-profile-page"
+
+import { PublicSchedulePage } from "./pages/public-schedule-page"
 export default function App() {
   return (
     <BrowserRouter>
@@ -47,26 +57,40 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route
+            path="/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
 
           <Route
-  path="/teams"
-  element={<TeamsPage />}
-/>
+            path="/update-password"
+            element={<UpdatePasswordPage />}
+          />
+
+          <Route
+            path="/teams"
+            element={<TeamsPage />}
+          />
 
 <Route
-  path="/tournaments"
-  element={<TournamentsPage />}
+  path="/teams/:teamId"
+  element={<TeamProfilePage />}
 />
 
-<Route
-  path="/tournaments/:tournamentId"
-  element={<TournamentDetailPage />}
-/>
+          <Route
+            path="/tournaments"
+            element={<TournamentsPage />}
+          />
 
-<Route
-  path="/about"
-  element={<AboutPage />}
-/>
+          <Route
+            path="/tournaments/:tournamentId"
+            element={<TournamentDetailPage />}
+          />
+
+          <Route
+            path="/about"
+            element={<AboutPage />}
+          />
 
           <Route path="/book" element={<BookPage />} />
           <Route
@@ -74,85 +98,104 @@ export default function App() {
             element={<BookingResourcePage />}
           />
 
-<Route
-  path="/book/trainers"
-  element={<TrainersPage />}
-/>
+          <Route
+            path="/book/trainers"
+            element={<TrainersPage />}
+          />
           <Route path="/book/fields" element={<FieldReservationsPage />} />
           <Route path="/book/fields/:fieldId" element={<FieldDetailPage />} />
 
-{/* PROTECTED USER ROUTES */}
-<Route element={<ProtectedRoute />}>
-  <Route path="/dashboard" element={<DashboardPage />} />
-  <Route path="/onboarding" element={<OnboardingPage />} />
+          {/* PROTECTED USER ROUTES */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
 
-  <Route
-    path="/dashboard/organizations/:organizationId"
-    element={<OrganizationDashboardPage />}
-  />
+            <Route
+              path="/dashboard/organizations/:organizationId"
+              element={<OrganizationDashboardPage />}
+            />
 
-  <Route
-    path="/dashboard/organizations/:organizationId/teams/new"
-    element={<CreateTeamPage />}
-  />
+            <Route
+              path="/dashboard/organizations/:organizationId/teams/new"
+              element={<CreateTeamPage />}
+            />
 
-  <Route
-    path="/dashboard/organizations/:organizationId/teams/:teamId"
-    element={<TeamDashboardPage />}
-  />
+            <Route
+              path="/dashboard/organizations/:organizationId/teams/:teamId"
+              element={<TeamDashboardPage />}
+            />
 
-  <Route
-    path="/dashboard/organizations/:organizationId/teams/:teamId/players/new"
-    element={<AddPlayerPage />}
-  />
+            <Route
+              path="/dashboard/organizations/:organizationId/teams/:teamId/players/new"
+              element={<AddPlayerPage />}
+            />
 
-  <Route
-    path="/dashboard/organizations/:organizationId/teams/:teamId/players/:playerId/edit"
-    element={<EditPlayerPage />}
-  />
+            <Route
+              path="/dashboard/organizations/:organizationId/teams/:teamId/players/:playerId/edit"
+              element={<EditPlayerPage />}
+            />
 
-  <Route
-    path="/book/resources/:resourceId/reserve"
-    element={<ReserveResourcePage />}
-  />
+            <Route
+              path="/book/resources/:resourceId/reserve"
+              element={<ReserveResourcePage />}
+            />
+            <Route
+              path="/dashboard/reservations"
+              element={<MyReservationsPage />}
+            />
+            <Route
+              path="/dashboard/organizations/:organizationId/schedule"
+              element={<OrganizationSchedulePage />}
+            />
+
 <Route
-  path="/dashboard/reservations"
-  element={<MyReservationsPage />}
-/>
-
-</Route>
-
-{/* PLATFORM ADMIN ROUTES */}
-<Route element={<AdminRoute />}>
-
-  <Route
-    path="/admin/bookings"
-    element={<AdminBookingsPage />}
-  />
-<Route
-  path="/admin/resources"
-  element={<AdminResourcesPage />}
-/>
-
-  <Route
-    path="/admin/resources/:resourceId"
-    element={<AdminResourcePage />}
-  />
-  <Route
-  path="/admin/tournaments/new"
-  element={<CreateTournamentPage />}
+  path="/dashboard/organizations/:organizationId/schedule/:eventId/edit"
+  element={<EditOrganizationEventPage />}
 />
 
 <Route
-  path="/admin/tournaments/:tournamentId"
-  element={<AdminTournamentPage />}
+  path="/dashboard/organizations/:organizationId/schedule/new"
+  element={<CreateOrganizationEventPage />}
 />
 
+<Route
+  path="/organizations/:organizationId/schedule"
+  element={<PublicSchedulePage />}
+/>
+
+          </Route>
+
+          {/* PLATFORM ADMIN ROUTES */}
+          <Route element={<AdminRoute />}>
+
+            <Route
+              path="/admin/bookings"
+              element={<AdminBookingsPage />}
+            />
+            <Route
+              path="/admin/resources"
+              element={<AdminResourcesPage />}
+            />
+
+            <Route
+              path="/admin/resources/:resourceId"
+              element={<AdminResourcePage />}
+            />
+            <Route
+              path="/admin/tournaments/new"
+              element={<CreateTournamentPage />}
+            />
+
+            <Route
+              path="/admin/tournaments/:tournamentId"
+              element={<AdminTournamentPage />}
+            />
 
 
 
 
-</Route>
+
+          </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>

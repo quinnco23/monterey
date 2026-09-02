@@ -197,6 +197,10 @@ export function TeamsPage() {
                         {team.name}
                       </h3>
 
+                      <Link to={`/teams/${team.id}`}>
+  View Team
+</Link>
+
                     </div>
 
                     <ShieldCheck className="h-6 w-6 shrink-0 text-scoreboard-amber" />

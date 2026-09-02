@@ -247,6 +247,29 @@ import {
                     Settings
                   </Button>
                 </Link>
+                <Link
+  to={`/dashboard/organizations/${organization.id}/schedule`}
+  className="
+    border
+    border-scoreboard-cream/25
+    bg-scoreboard-green
+    p-5
+    transition-colors
+    hover:border-scoreboard-amber
+  "
+>
+  <p className="scoreboard-label text-scoreboard-amber">
+    Calendar
+  </p>
+
+  <h3 className="mt-2 text-xl font-black uppercase tracking-[0.05em]">
+    Schedule
+  </h3>
+
+  <p className="mt-3 text-sm text-scoreboard-muted">
+    Practices, scrimmages, games, and tournaments.
+  </p>
+</Link>
 
                 <Link
   to="/dashboard/reservations"

@@ -3,6 +3,8 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/auth-context"
 import { supabase } from "@/lib/supabase"
+import { PasswordInput } from "./passwoord-input"
+import { isStrongPassword } from "@/features/auth/password-utils"
 
 type AuthPageProps = { mode: "login" | "register" }
 
@@ -23,36 +25,73 @@ export function AuthPage({ mode }: AuthPageProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+  
     if (!supabase) {
-      setMessage("Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env first.")
+      setMessage(
+        "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env first."
+      )
       return
     }
-
+  
     setLoading(true)
     setMessage("")
-
+  
+    // REGISTER
     if (mode === "register") {
+      if (!isStrongPassword(password)) {
+        setMessage(
+          "Password must be at least 10 characters and include an uppercase letter, lowercase letter, number, and special character."
+        )
+        setLoading(false)
+        return
+      }
+  
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { first_name: firstName.trim(), last_name: lastName.trim() },
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+          },
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       })
+  
       setLoading(false)
-
-      if (error) return setMessage(error.message)
-      if (data.session) return navigate("/onboarding", { replace: true })
-      setMessage("Account created. Check your email to confirm your account, then sign in.")
+  
+      if (error) {
+        setMessage(error.message)
+        return
+      }
+  
+      if (data.session) {
+        navigate("/onboarding", { replace: true })
+        return
+      }
+  
+      setMessage(
+        "Account created. Check your email to confirm your account, then sign in."
+      )
+  
       return
     }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  
+    // LOGIN
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+  
     setLoading(false)
-    if (error) return setMessage(error.message)
-
+  
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+  
     const from = (location.state as LocationState | null)?.from
+  
     navigate(from || "/dashboard", { replace: true })
   }
 
@@ -67,7 +106,7 @@ export function AuthPage({ mode }: AuthPageProps) {
 
         <div className="border-b border-scoreboard-cream/25 pb-5">
           <p className="scoreboard-label text-scoreboard-amber">
-            SCBC Account
+            League Account
           </p>
 
           <h1 className="mt-3 text-3xl font-black uppercase leading-tight tracking-[0.06em]">
@@ -174,35 +213,47 @@ export function AuthPage({ mode }: AuthPageProps) {
             />
           </label>
 
-          <label className="block">
-            <span className="scoreboard-label text-scoreboard-cream">
-              Password
-            </span>
+          {isLogin ? (
+  <label className="block">
+    <span className="scoreboard-label text-scoreboard-cream">
+      Password
+    </span>
 
-            <input
-              className="
-                mt-2
-                w-full
-                rounded-none
-                border
-                border-scoreboard-cream/30
-                bg-scoreboard-cream
-                px-3
-                py-3
-                text-base
-                text-scoreboard-dark
-                outline-none
-                transition
-                placeholder:text-scoreboard-dark/40
-                focus:border-scoreboard-amber
-              "
-              type="password"
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
+    <input
+      type="password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      autoComplete="current-password"
+      required
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-base
+        text-scoreboard-dark
+        outline-none
+        transition
+        focus:border-scoreboard-amber
+      "
+    />
+
+    
+  </label>
+
+  
+) : (
+  <PasswordInput
+    value={password}
+    onChange={setPassword}
+    label="Password"
+    showRequirements
+  />
+)}
 
           <Button
             className="
@@ -229,6 +280,24 @@ export function AuthPage({ mode }: AuthPageProps) {
           </Button>
 
         </form>
+        {isLogin && (
+  <div className="text-right">
+    <Link
+      to="/forgot-password"
+      className="
+      m-auto
+       text-[10px]
+        font-black
+        uppercase
+        tracking-[0.08em]
+        text-scoreboard-amber
+        hover:text-scoreboard-cream
+      "
+    >
+      Forgot Password?
+    </Link>
+  </div>
+)}
 
         {message && (
           <div className="mt-5 border border-scoreboard-cream/20 bg-scoreboard-dark px-4 py-3">
@@ -257,6 +326,7 @@ export function AuthPage({ mode }: AuthPageProps) {
             >
               {isLogin ? "Register" : "Sign In"}
             </Link>
+            
           </p>
         </div>
 

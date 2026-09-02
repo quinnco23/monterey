@@ -14,7 +14,7 @@ import {
           <div className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
   
             <p className="scoreboard-label text-scoreboard-amber">
-              Moterey Baseball
+              Monterey League
             </p>
   
             <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.95] tracking-[0.06em] sm:text-6xl lg:text-7xl">
@@ -25,7 +25,7 @@ import {
   
             <p className="mt-7 max-w-2xl text-base leading-8 text-scoreboard-muted sm:text-lg">
               Celebrating  baseball, community, competition,
-              and the places and peole that make the game
+              and the places and people that make the game
               special.
             </p>
   
@@ -65,7 +65,7 @@ import {
                   . Generations of local players and families have
                   spent their spring and summer days on these fields —
                   taking batting practice, chasing fly balls, playing
-                  Little League games, and creating the memories that
+                   League games, and creating the memories that
                   make Baseball simply.. magic. 
                 </p>
   
@@ -119,13 +119,13 @@ import {
             </h2>
   
             <p className="mt-6 max-w-4xl text-base leading-8 text-scoreboard-muted">
-              We believe youth baseball is at its best when it brings
+              We believe  baseball is at its best when it brings
               people together. Players learn to compete, become
               teammates, handle adversity, and develop a lifelong
               appreciation for the game. Parents become friends.
               Coaches become mentors. Teams that arrive as opponents
-              often leave with respect for one another and stories
-              they&apos;ll remember for years.
+               leave with respect for one another and stories
+              they&apos;ll remember for ever.
             </p>
   
             <div className="mt-10 grid gap-px bg-scoreboard-cream/20 md:grid-cols-3">
@@ -196,7 +196,7 @@ import {
               local teams with programs from throughout Northern
               California and beyond, while making our community and
               its ballparks a destination for memorable baseball
-              weekends.
+              year round. 
             </p>
   
             <div className="mt-10 border-l-4 border-scoreboard-amber pl-6">
