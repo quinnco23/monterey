@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 export function SiteHeader() {
   const { user, loading, signOut } = useAuth()
   const navigate = useNavigate()
+  const GAMEON_URL = "https://quinnglobal.com/fan"
 
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -104,6 +105,34 @@ export function SiteHeader() {
               </Link>
             ))}
 
+<a
+  href={GAMEON_URL}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="
+    hidden
+    items-center
+    gap-2
+    border
+    border-scoreboard-amber
+    bg-scoreboard-amber
+    px-4
+    py-1
+    text-xs
+    font-black
+    uppercase
+    tracking-[0.12em]
+    text-scoreboard-dark
+    transition-colors
+    hover:bg-scoreboard-cream
+    lg:inline-flex
+  "
+>
+  <span className="text-[10px] tracking-[0.18em]">
+    GameOn
+  </span>
+</a>
+
           </nav>
 
           {/* DESKTOP AUTH */}
@@ -156,6 +185,8 @@ export function SiteHeader() {
               </>
             ) : !loading ? (
               <>
+
+              
                 <Link
                   to="/login"
                   className={cn(

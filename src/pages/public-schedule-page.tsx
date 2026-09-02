@@ -261,10 +261,10 @@ useEffect(() => {
   Upcoming practices, scrimmages, games, and tournaments.
 </p>
 
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-scoreboard-muted sm:text-base">
+          {/* <p className="mt-4 max-w-2xl text-sm leading-7 text-scoreboard-muted sm:text-base">
             Practices, scrimmages, games and tournaments
             from baseball organizations across the community.
-          </p>
+          </p> */}
 
         </div>
 

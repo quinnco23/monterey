@@ -72,10 +72,10 @@ export default function App() {
             element={<TeamsPage />}
           />
 
-<Route
-  path="/teams/:teamId"
-  element={<TeamProfilePage />}
-/>
+          <Route
+            path="/teams/:teamId"
+            element={<TeamProfilePage />}
+          />
 
           <Route
             path="/tournaments"
@@ -104,6 +104,10 @@ export default function App() {
           />
           <Route path="/book/fields" element={<FieldReservationsPage />} />
           <Route path="/book/fields/:fieldId" element={<FieldDetailPage />} />
+          <Route
+              path="/organizations/:organizationId/schedule"
+              element={<PublicSchedulePage />}
+            />
 
           {/* PROTECTED USER ROUTES */}
           <Route element={<ProtectedRoute />}>
@@ -148,20 +152,17 @@ export default function App() {
               element={<OrganizationSchedulePage />}
             />
 
-<Route
-  path="/dashboard/organizations/:organizationId/schedule/:eventId/edit"
-  element={<EditOrganizationEventPage />}
-/>
+            <Route
+              path="/dashboard/organizations/:organizationId/schedule/:eventId/edit"
+              element={<EditOrganizationEventPage />}
+            />
 
-<Route
-  path="/dashboard/organizations/:organizationId/schedule/new"
-  element={<CreateOrganizationEventPage />}
-/>
+            <Route
+              path="/dashboard/organizations/:organizationId/schedule/new"
+              element={<CreateOrganizationEventPage />}
+            />
 
-<Route
-  path="/organizations/:organizationId/schedule"
-  element={<PublicSchedulePage />}
-/>
+          
 
           </Route>
 

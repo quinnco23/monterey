@@ -41,30 +41,25 @@ export function TeamsPage() {
       setError("")
 
       const { data, error } = await supabase
-        .from("teams")
-        .select(`
-          id,
-          name,
-          slug,
-          age_group,
-          classification,
-          season_year,
-          city,
-          state,
-          status,
-
-          organizations (
-            id,
-            name
-          ),
-
-          team_roster_members (
-            id
-          )
-        `)
-        .eq("status", "active")
-        .order("age_group")
-        .order("name")
+  .from("teams")
+  .select(`
+    id,
+    name,
+    slug,
+    age_group,
+    classification,
+    season_year,
+    city,
+    state,
+    status,
+    organizations (
+      id,
+      name
+    )
+  `)
+  .eq("status", "active")
+  .order("age_group")
+  .order("name")
 
       if (error) {
         setError(error.message)
@@ -87,16 +82,16 @@ export function TeamsPage() {
         <div className="mx-auto max-w-7xl px-6 py-14">
 
           <p className="scoreboard-label text-scoreboard-amber">
-            Travel Baseball
+            Monterey League 
           </p>
 
           <h1 className="mt-3 text-4xl font-black uppercase tracking-[0.08em] sm:text-5xl">
             Teams
           </h1>
 
-          <p className="mt-4 max-w-2xl text-scoreboard-muted">
+          {/* <p className="mt-4 max-w-2xl text-scoreboard-muted">
             Browse organizations, teams, rosters, and tournament participants.
-          </p>
+          </p> */}
 
         </div>
       </section>
@@ -107,7 +102,7 @@ export function TeamsPage() {
 
           <div>
             <p className="scoreboard-label">
-              Team Directory
+               Directory
             </p>
 
             <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
@@ -196,10 +191,6 @@ export function TeamsPage() {
                       <h3 className="mt-3 text-2xl font-black uppercase leading-tight tracking-[0.05em]">
                         {team.name}
                       </h3>
-
-                      <Link to={`/teams/${team.id}`}>
-  View Team
-</Link>
 
                     </div>
 
