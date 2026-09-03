@@ -156,7 +156,7 @@ export function BookPage() {
           </p>
 
           <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
-            Booking Categories
+            Categories
           </h2>
         </div>
 
@@ -205,7 +205,7 @@ export function BookPage() {
 
             <div>
               <p className="scoreboard-label">
-                Available Resources
+                Available Now
               </p>
 
               <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">

@@ -23,7 +23,7 @@ export function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-700">Dashboard</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">Welcome to SCBC</h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight">Welcome to MBLB</h1>
           <p className="mt-2 text-slate-600">{user?.email}</p>
         </div>
         <Link className={cn(buttonVariants())} to="/onboarding">Create organization</Link>

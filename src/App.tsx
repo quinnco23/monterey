@@ -22,6 +22,7 @@ import { AdminRoute } from "./features/auth/admin-route"
 import { AdminResourcePage } from "./pages/admin-resource-page"
 import { TrainersPage } from "./pages/trainers-page"
 import { AdminTournamentPage } from "./pages/admin-tournament-page"
+import { OrganizationSettingsPage } from "./pages/organization-settings-page"
 
 import { CreateTournamentPage } from "./pages/create-tournament-page"
 
@@ -46,6 +47,7 @@ import { EditOrganizationEventPage } from "./pages/edit-org-event"
 import { TeamProfilePage } from "./team-profile-page"
 
 import { PublicSchedulePage } from "./pages/public-schedule-page"
+import { OrganizationMembersPage } from "./organization-members-page"
 export default function App() {
   return (
     <BrowserRouter>
@@ -161,7 +163,15 @@ export default function App() {
               path="/dashboard/organizations/:organizationId/schedule/new"
               element={<CreateOrganizationEventPage />}
             />
+            <Route
+  path="/dashboard/organizations/:organizationId/settings"
+  element={<OrganizationSettingsPage />}
+/>
 
+<Route
+  path="/dashboard/organizations/:organizationId/members"
+  element={<OrganizationMembersPage />}
+/>
           
 
           </Route>

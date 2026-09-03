@@ -80,7 +80,7 @@ export function SiteHeader() {
                 sm:tracking-[0.18em]
               "
             >
-              Baseball
+              Bay League Baseball
             </span>
           </Link>
 

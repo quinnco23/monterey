@@ -14,7 +14,7 @@ import {
           <div className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
   
             <p className="scoreboard-label text-scoreboard-amber">
-              Monterey League
+              Monterey Bay League Baseball
             </p>
   
             <h1 className="mt-4 max-w-4xl text-5xl font-black uppercase leading-[0.95] tracking-[0.06em] sm:text-6xl lg:text-7xl">
@@ -24,7 +24,7 @@ import {
             </h1>
   
             <p className="mt-7 max-w-2xl text-base leading-8 text-scoreboard-muted sm:text-lg">
-              Celebrating  baseball, community, competition,
+              Celebrating  Baseball, community, competition,
               and the places and people that make the game
               special.
             </p>
@@ -125,7 +125,7 @@ import {
               appreciation for the game. Parents become friends.
               Coaches become mentors. Teams that arrive as opponents
                leave with respect for one another and stories
-              they&apos;ll remember for ever.
+              they&apos;ll share forever.
             </p>
   
             <div className="mt-10 grid gap-px bg-scoreboard-cream/20 md:grid-cols-3">
@@ -165,7 +165,7 @@ import {
   
                 <p className="mt-3 text-sm leading-7 text-scoreboard-muted">
                   Helping the next generation build a connection to
-                  baseball that lasts well beyond one season.
+                  Baseball that lasts well beyond one season.
                 </p>
               </div>
   

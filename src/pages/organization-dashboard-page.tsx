@@ -55,7 +55,18 @@ import {
   
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-  
+    
+    type Tournament = {
+      id: string
+      name: string
+      start_date: string
+      end_date: string
+      city: string | null
+      state: string | null
+      status: string
+    }
+    
+    const [tournaments, setTournaments] = useState<Tournament[]>([])
     useEffect(() => {
       async function loadDashboard() {
         if (!organizationId) return
@@ -80,6 +91,8 @@ import {
             `)
             .eq("id", organizationId)
             .single(),
+
+            
   
             supabase
             .from("teams")
@@ -97,12 +110,17 @@ import {
             `)
             .eq("organization_id", organizationId)
             .order("name"),
+
+            
   
           supabase
             .from("organization_members")
             .select("*", { count: "exact", head: true })
             .eq("organization_id", organizationId)
             .eq("status", "active"),
+
+
+            
         ])
   
         if (organizationResult.error) {
@@ -126,12 +144,39 @@ import {
             members: membersResult.count ?? 0,
             tournaments: 0,
           })
+
+          const { data: tournamentData, error: tournamentError } =
+  await supabase
+    .from("tournaments")
+    .select(`
+      id,
+      name,
+      start_date,
+      end_date,
+      city,
+      state,
+      status
+    `)
+    .gte("end_date", new Date().toISOString().slice(0, 10))
+    .order("start_date", { ascending: true })
+    .limit(5)
+
+if (tournamentError) {
+  console.error(
+    "Unable to load tournaments:",
+    tournamentError
+  )
+} else {
+  setTournaments(tournamentData ?? [])
+}
   
         setLoading(false)
       }
   
       loadDashboard()
     }, [organizationId])
+
+    
   
     if (loading) {
       return (
@@ -497,31 +542,161 @@ import {
 /> */}
 
 {/* MEMBERS */}
-<DashboardPanel
-  eyebrow="Staff & Coaches"
-  title="Members"
-  description="Invite coaches, team managers, scorekeepers, and organization administrators."
-  href={`/dashboard/organizations/${organization.id}/members`}
-  action="Manage Members"
-/>
+<Link
+  to={`/dashboard/organizations/${organization.id}/members`}
+  className="
+    scoreboard-panel
+    flex
+    items-center
+    justify-between
+    p-5
+    transition
+    hover:border-scoreboard-amber
+  "
+>
+  <div>
+    <p className="scoreboard-label text-scoreboard-amber">
+      Organization
+    </p>
+
+    <h2 className="mt-1 text-lg font-black uppercase">
+      Members & Staff
+    </h2>
+
+    <p className="mt-2 text-sm opacity-60">
+      Coaches, managers, scorekeepers, and organization access.
+    </p>
+  </div>
+
+  <span className="text-xl text-scoreboard-amber">
+    →
+  </span>
+</Link>
 
 {/* TOURNAMENTS */}
-<DashboardPanel
-  eyebrow="Competition"
-  title="Tournaments"
-  description="View tournament registrations, upcoming events, schedules, and results."
-  href={`/dashboard/organizations/${organization.id}/tournaments`}
-  action="View Tournaments"
-/>
+<div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+
+  <div className="flex items-start justify-between gap-4">
+
+    <div>
+      <p className="scoreboard-label text-scoreboard-amber">
+        Competition
+      </p>
+
+      <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
+        Tournaments
+      </h2>
+    </div>
+
+    <Link
+      to="/tournaments"
+      className="text-xs font-black uppercase tracking-[0.10em] text-scoreboard-amber hover:text-scoreboard-cream"
+    >
+      View All →
+    </Link>
+
+  </div>
+
+  <div className="mt-6 border-t border-scoreboard-cream/20">
+
+    {tournaments.length === 0 ? (
+      <div className="py-5">
+        <p className="text-sm text-scoreboard-muted">
+          No upcoming tournaments.
+        </p>
+      </div>
+    ) : (
+      tournaments.map((tournament) => {
+        const start = new Date(
+          `${tournament.start_date}T12:00:00`
+        )
+
+        return (
+          <Link
+            key={tournament.id}
+            to={`/tournaments/${tournament.id}`}
+            className="
+              group
+              flex
+              items-center
+              justify-between
+              gap-4
+              border-b
+              border-scoreboard-cream/15
+              py-4
+              last:border-b-0
+            "
+          >
+
+            <div className="min-w-0">
+
+              <p className="font-black uppercase tracking-[0.04em] group-hover:text-scoreboard-amber">
+                {tournament.name}
+              </p>
+
+              <p className="mt-1 text-xs text-scoreboard-muted">
+                {start.toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+
+                {(tournament.city || tournament.state) && (
+                  <>
+                    {" • "}
+                    {[tournament.city, tournament.state]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </>
+                )}
+              </p>
+
+            </div>
+
+            <span className="shrink-0 text-scoreboard-amber">
+              →
+            </span>
+
+          </Link>
+        )
+      })
+    )}
+
+  </div>
+
+</div>
 
 {/* SETTINGS */}
-<DashboardPanel
-  eyebrow="Administration"
-  title="Organization Settings"
-  description="Manage your organization profile, branding, location, permissions, and public information."
-  href={`/dashboard/organizations/${organization.id}/settings`}
-  action="Organization Settings"
-/>
+<Link
+  to={`/dashboard/organizations/${organization.id}/settings`}
+  className="
+    scoreboard-panel
+    flex
+    items-center
+    justify-between
+    p-5
+    transition
+    hover:border-scoreboard-amber
+  "
+>
+  <div>
+    <p className="scoreboard-label text-scoreboard-amber">
+      Administration
+    </p>
+
+    <h2 className="mt-1 text-lg font-black uppercase">
+      Organization Settings
+    </h2>
+
+    <p className="mt-2 text-sm opacity-60">
+      Manage organization information and preferences.
+    </p>
+  </div>
+
+  <span className="text-xl text-scoreboard-amber">
+    →
+  </span>
+</Link>
 
 </section>
   
