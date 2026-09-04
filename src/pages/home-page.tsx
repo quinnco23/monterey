@@ -343,7 +343,7 @@ export function HomePage() {
               </p>
 
               <h2 className="mt-2 text-3xl font-black uppercase tracking-[0.08em]">
-                How It Works
+                Simply for the love of Baseball
               </h2>
             </div>
 
@@ -364,18 +364,18 @@ export function HomePage() {
             {[
               [
                 "01",
-                "Create your organization",
-                "Set up your club, league, or tournament company and invite staff.",
+                "Create your club",
+                "Set up your club, invite staff.",
               ],
               [
                 "02",
-                "Build team profiles",
+                "Build teams",
                 "Add age group, classification, coaches, branding, and public team information.",
               ],
               [
                 "03",
-                "Register for events",
-                "Find tournaments and complete registration from a single team dashboard.",
+                "Manage your organization",
+                "Find tournaments, manage your rosters, schedule events and practices.",
               ],
             ].map(([n, title, text]) => (
 
