@@ -8,105 +8,473 @@ import {
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+
+type Tournament = {
+  id: string
+  name: string
+  slug: string | null
+  description: string | null
+  city: string | null
+  state: string | null
+  start_date: string
+  end_date: string
+  status: string
+}
 
 export function HomePage() {
-  return (
+
+  const [tournaments, setTournaments] =
+  useState<Tournament[]>([])
+
+const [tournamentsLoading, setTournamentsLoading] =
+  useState(true)
+
+useEffect(() => {
+  async function loadTournaments() {
+    setTournamentsLoading(true)
+
+    const today =
+      new Date().toISOString().slice(0, 10)
+
+    const { data, error } = await supabase
+      .from("tournaments")
+      .select(`
+        id,
+        name,
+        slug,
+        description,
+        city,
+        state,
+        start_date,
+        end_date,
+        status
+      `)
+      .neq("status", "cancelled")
+      .gte("end_date", today)
+      .order("start_date", {
+        ascending: true,
+      })
+      .limit(6)
+
+    if (error) {
+      console.error(
+        "Unable to load tournaments:",
+        error
+      )
+
+      setTournamentsLoading(false)
+      return
+    }
+
+    setTournaments(
+      (data ?? []) as Tournament[]
+    )
+
+    setTournamentsLoading(false)
+  }
+
+   void loadTournaments()
+}, [])
+
+const featuredTournament =
+  tournaments.length > 0
+    ? tournaments[0]
+    : null
+
+return (
 <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
 
 {/* TOURNAMENT HERO */}
+{/* TOURNAMENT HERO */}
 <section className="bg-scoreboard-dark">
+
   <div className="mx-auto max-w-7xl px-6 pt-10">
 
     <div className="border border-scoreboard-cream/25 bg-scoreboard-green">
-      <div className="px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24">
 
-        <div className="flex items-center justify-between border-b border-scoreboard-cream/20 pb-5">
+      {tournamentsLoading ? (
+
+        <div className="px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24">
 
           <p className="scoreboard-label text-scoreboard-amber">
-            Santa Cruz Invitational
+            Tournament Schedule
           </p>
 
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="h-2.5 w-2.5 bg-scoreboard-red" />
-
-            <span className="text-xs font-black uppercase tracking-[0.14em] text-scoreboard-muted">
-              Registration Open
-            </span>
-          </div>
-
-        </div>
-
-        <div className="pt-10">
-
-          <h1 className="text-5xl font-black uppercase leading-[0.95] tracking-[0.03em] sm:text-6xl lg:text-7xl">
-            SC Invitational
-            <br />
-            July 17–19
-            <br />
-
-            <span className="text-scoreboard-amber">
-              Beat the Heat
-            </span>
+          <h1 className="mt-4 text-4xl font-black uppercase tracking-[0.05em]">
+            Loading...
           </h1>
 
-          <p className="mt-7 max-w-3xl text-base leading-8 text-scoreboard-muted sm:text-lg">
-            Summer baseball on the Monterey Bay. The dates are set, the preperations are being made
-    its time to  and spend the weekend playing Ball
-             on the California coast.
-          </p>
+        </div>
 
-          <div className="mt-9 flex flex-wrap gap-3">
+      ) : featuredTournament ? (
 
-            <Link to="/register">
-              <Button
-                size="lg"
-                className="
-                  rounded-none
-                  border
-                  border-scoreboard-cream
-                  bg-scoreboard-cream
-                  px-6
-                  font-bold
-                  uppercase
-                  tracking-[0.12em]
-                  text-scoreboard-dark
-                  hover:bg-scoreboard-amber
-                  hover:text-scoreboard-dark
-                "
+        <div className="px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24">
+
+          <div className="flex items-center justify-between border-b border-scoreboard-cream/20 pb-5">
+
+            <p className="scoreboard-label text-scoreboard-amber">
+              {featuredTournament.name}
+            </p>
+
+            <div className="hidden items-center gap-2 sm:flex">
+
+              <span className="h-2.5 w-2.5 bg-scoreboard-red" />
+
+              <span className="text-xs font-black uppercase tracking-[0.14em] text-scoreboard-muted">
+                {featuredTournament.status === "open"
+                  ? "Registration Open"
+                  : featuredTournament.status.replaceAll(
+                      "_",
+                      " "
+                    )}
+              </span>
+
+            </div>
+
+          </div>
+
+          <div className="pt-10">
+
+            <p className="scoreboard-label text-scoreboard-muted">
+              Featured Tournament
+            </p>
+
+            <h1 className="mt-4 text-5xl font-black uppercase leading-[0.95] tracking-[0.03em] sm:text-6xl lg:text-7xl">
+
+              {featuredTournament.name}
+
+              <br />
+
+              <span className="text-scoreboard-amber">
+
+                {new Date(
+                  `${featuredTournament.start_date}T12:00:00`
+                ).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                })}
+
+                {" – "}
+
+                {new Date(
+                  `${featuredTournament.end_date}T12:00:00`
+                ).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                })}
+
+              </span>
+
+            </h1>
+
+            {(featuredTournament.city ||
+              featuredTournament.state) && (
+
+              <p className="mt-6 text-sm font-black uppercase tracking-[0.10em] text-scoreboard-cream">
+
+                {[
+                  featuredTournament.city,
+                  featuredTournament.state,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+
+              </p>
+
+            )}
+
+            {featuredTournament.description && (
+
+              <p className="mt-5 max-w-3xl text-base leading-8 text-scoreboard-muted sm:text-lg">
+                {featuredTournament.description}
+              </p>
+
+            )}
+
+            <div className="mt-9 flex flex-wrap gap-3">
+
+              <Link
+                to={`/tournaments/${featuredTournament.id}/register`}
               >
-                Register Team
 
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+                <Button
+                  size="lg"
+                  className="
+                    rounded-none
+                    border
+                    border-scoreboard-cream
+                    bg-scoreboard-cream
+                    px-6
+                    font-bold
+                    uppercase
+                    tracking-[0.12em]
+                    text-scoreboard-dark
+                    hover:bg-scoreboard-amber
+                    hover:text-scoreboard-dark
+                  "
+                >
+                  Register Team
 
-            <Link to="/tournaments">
-              <Button
-                size="lg"
-                variant="outline"
-                className="
-                  rounded-none
-                  border-scoreboard-cream/55
-                  bg-transparent
-                  px-6
-                  font-bold
-                  uppercase
-                  tracking-[0.12em]
-                  text-scoreboard-cream
-                  hover:bg-scoreboard-light
-                  hover:text-scoreboard-cream
-                "
+                  <ArrowRight className="ml-2 h-4 w-4" />
+
+                </Button>
+
+              </Link>
+
+              <Link
+                to={`/tournaments/${featuredTournament.id}`}
               >
-                Tournament Details
-              </Button>
-            </Link>
+
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="
+                    rounded-none
+                    border-scoreboard-cream/55
+                    bg-transparent
+                    px-6
+                    font-bold
+                    uppercase
+                    tracking-[0.12em]
+                    text-scoreboard-cream
+                    hover:bg-scoreboard-light
+                    hover:text-scoreboard-cream
+                  "
+                >
+                  Tournament Details
+                </Button>
+
+              </Link>
+
+            </div>
 
           </div>
 
         </div>
 
-      </div>
+      ) : (
+
+        <div className="px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24">
+
+          <p className="scoreboard-label text-scoreboard-amber">
+            Tournament Schedule
+          </p>
+
+          <h1 className="mt-4 text-4xl font-black uppercase tracking-[0.05em]">
+            No Upcoming Tournaments
+          </h1>
+
+          <p className="mt-5 text-scoreboard-muted">
+            Check back soon for upcoming Monterey Bay baseball tournaments.
+          </p>
+
+        </div>
+
+      )}
+
     </div>
+
+  </div>
+
+</section>
+
+<section className="bg-scoreboard-dark">
+  <div className="mx-auto max-w-7xl px-6 py-12">
+
+    <div className="flex items-end justify-between border-b border-scoreboard-cream/25 pb-4">
+
+      <div>
+        <p className="scoreboard-label text-scoreboard-amber">
+          Tournament Calendar
+        </p>
+
+        <h2 className="mt-2 text-3xl font-black uppercase tracking-[0.07em]">
+          Upcoming Tournaments
+        </h2>
+      </div>
+
+      <Link
+        to="/tournaments"
+        className="
+          hidden
+          text-xs
+          font-black
+          uppercase
+          tracking-[0.12em]
+          text-scoreboard-amber
+          hover:text-scoreboard-cream
+          sm:block
+        "
+      >
+        View All →
+      </Link>
+
+    </div>
+
+    {tournamentsLoading ? (
+      <div className="py-10">
+
+        <p className="scoreboard-label text-scoreboard-muted">
+          Loading Tournaments...
+        </p>
+
+      </div>
+    ) : tournaments.length === 0 ? (
+      <div className="mt-6 border border-scoreboard-cream/25 bg-scoreboard-green p-8">
+
+        <p className="scoreboard-label text-scoreboard-amber">
+          Tournament Schedule
+        </p>
+
+        <h3 className="mt-3 text-xl font-black uppercase">
+          No Upcoming Tournaments
+        </h3>
+
+        <p className="mt-3 text-sm text-scoreboard-muted">
+          New tournaments will appear here as they are announced.
+        </p>
+
+      </div>
+    ) : (
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+
+        {tournaments.map((tournament) => {
+          const start =
+            new Date(
+              `${tournament.start_date}T12:00:00`
+            )
+
+          const end =
+            new Date(
+              `${tournament.end_date}T12:00:00`
+            )
+
+          return (
+            <article
+              key={tournament.id}
+              className="
+                border
+                border-scoreboard-cream/25
+                bg-scoreboard-green
+                p-6
+              "
+            >
+
+              <div className="flex items-start justify-between gap-4">
+
+                <div>
+
+                  <p className="scoreboard-label text-scoreboard-amber">
+                    {tournament.status === "open"
+                      ? "Registration Open"
+                      : tournament.status.replace("_", " ")}
+                  </p>
+
+                  <h3 className="mt-3 text-2xl font-black uppercase leading-tight tracking-[0.05em]">
+                    {tournament.name}
+                  </h3>
+
+                </div>
+
+                <CalendarDays className="h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+              </div>
+
+              <div className="mt-5 border-y border-scoreboard-cream/15 py-4">
+
+                <p className="text-sm font-bold">
+
+                  {start.toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                  })}
+
+                  {" – "}
+
+                  {end.toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+
+                </p>
+
+                {(tournament.city ||
+                  tournament.state) && (
+                  <p className="mt-2 text-sm text-scoreboard-muted">
+
+                    {[tournament.city, tournament.state]
+                      .filter(Boolean)
+                      .join(", ")}
+
+                  </p>
+                )}
+
+              </div>
+
+              {tournament.description && (
+                <p className="mt-5 line-clamp-3 text-sm leading-6 text-scoreboard-muted">
+                  {tournament.description}
+                </p>
+              )}
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+
+                <Link
+                  to={`/tournaments/${tournament.id}`}
+                  className="
+                    inline-flex
+                    min-h-11
+                    flex-1
+                    items-center
+                    justify-center
+                    border
+                    border-scoreboard-cream/35
+                    px-4
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.10em]
+                    text-scoreboard-cream
+                    hover:border-scoreboard-amber
+                  "
+                >
+                  Tournament Details
+                </Link>
+
+                <Link
+                  to={`/tournaments/${tournament.id}/register`}
+                  className="
+                    inline-flex
+                    min-h-11
+                    flex-1
+                    items-center
+                    justify-center
+                    bg-scoreboard-amber
+                    px-4
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.10em]
+                    text-scoreboard-dark
+                    hover:bg-scoreboard-cream
+                  "
+                >
+                  Register Team
+
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+
+              </div>
+
+            </article>
+          )
+        })}
+
+      </div>
+    )}
 
   </div>
 </section>

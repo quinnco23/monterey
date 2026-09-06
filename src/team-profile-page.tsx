@@ -42,7 +42,7 @@ type TeamEvent = {
     state: string | null
   } | null
 
-  tournaments: {
+  public_tournament: {
     id: string
     name: string
   } | null
@@ -92,115 +92,222 @@ export function TeamProfilePage() {
       setError("")
 
       const [
-        teamResult,
-        scheduleResult,
-        tournamentResult,
-      ] = await Promise.all([
-        supabase
-          .from("teams")
-          .select(`
+  teamResult,
+  tournamentResult,
+] = await Promise.all([
+  // TEAM
+  supabase
+    .from("teams")
+    .select(`
+      id,
+      name,
+      age_group,
+      classification,
+      season_year,
+      city,
+      state,
+
+      organizations (
+        id,
+        name
+      )
+    `)
+    .eq("id", teamId)
+    .eq("status", "active")
+    .single(),
+
+  // TOURNAMENT REGISTRATIONS
+  supabase
+    .from("tournament_teams")
+    .select(`
+      id,
+      display_name,
+      status,
+
+      tournaments (
+        id,
+        name,
+        start_date,
+        end_date,
+        city,
+        state
+      ),
+
+      tournament_divisions (
+        id,
+        name,
+        age_group
+      )
+    `)
+    .eq("team_id", teamId)
+    // .in(
+    //   "status",
+    //   [
+    //     "approved",
+    //     "pending",
+    //     "waitlist",
+    //   ]
+    // ),
+])
+
+// CHECK TEAM FIRST
+if (teamResult.error) {
+  setError(teamResult.error.message)
+  setLoading(false)
+  return
+}
+
+// CHECK TOURNAMENTS
+if (tournamentResult.error) {
+  setError(tournamentResult.error.message)
+  setLoading(false)
+  return
+}
+const {
+  data: allTournamentRows,
+  error: allTournamentRowsError,
+} =
+  await supabase
+    .from("tournament_teams")
+    .select(`
+      id,
+      team_id,
+      tournament_id,
+      division_id,
+      display_name,
+      status
+    `)
+
+console.log(
+  "CURRENT TEAM ID:",
+  teamId
+)
+
+console.table(
+  (allTournamentRows ?? []).map((row) => ({
+    id: row.id,
+    team_id: row.team_id,
+    tournament_id: row.tournament_id,
+    display_name: row.display_name,
+    status: row.status,
+    matchesCurrentTeam:
+      row.team_id === teamId,
+  }))
+)
+
+console.log(
+  "MATCHING TOURNAMENT ROWS:",
+  (allTournamentRows ?? []).filter(
+    (row) => row.team_id === teamId
+  )
+)
+
+console.log(
+  "ALL TOURNAMENT ROW ERROR:",
+  allTournamentRowsError
+)
+
+console.log(
+  "TOURNAMENT TEAM IDS:",
+  (allTournamentRows ?? []).map((row) => ({
+    team_id: row.team_id,
+    display_name: row.display_name,
+    status: row.status,
+  }))
+)
+
+
+const loadedTeam =
+  teamResult.data as unknown as Team
+
+const organizationId =
+  loadedTeam.organizations?.id
+
+const now =
+  new Date().toISOString()
+
+// LOAD ALL UPCOMING ORGANIZATION EVENTS
+const {
+  data: scheduleData,
+  error: scheduleError,
+} =
+  organizationId
+    ? await supabase
+        .from("organization_events")
+        .select(`
+          id,
+          event_type,
+          title,
+          start_time,
+          end_time,
+          location_name,
+          opponent_name,
+          status,
+
+          booking_resources:resource_id (
             id,
             name,
-            age_group,
-            classification,
-            season_year,
             city,
-            state,
+            state
+          ),
 
-            organizations (
-              id,
-              name
-            )
-          `)
-          .eq("id", teamId)
-          .eq("status", "active")
-          .single(),
-
-        supabase
-          .from("organization_events")
-          .select(`
+          public_tournament:tournaments!organization_events_public_tournament_id_fkey (
             id,
-            event_type,
-            title,
-            start_time,
-            end_time,
-            location_name,
-            opponent_name,
-            status,
-
-            booking_resources:resource_id (
-              id,
-              name,
-              city,
-              state
-            ),
-
-            tournaments (
-              id,
-              name
-            )
-          `)
-          .eq("team_id", teamId)
-          .eq("status", "scheduled")
-          .gte("start_time", new Date().toISOString())
-          .order("start_time", {
+            name
+          )
+        `)
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq(
+          "status",
+          "scheduled"
+        )
+        .or(
+          `end_time.gte.${now},and(end_time.is.null,start_time.gte.${now})`
+        )
+        .order(
+          "start_time",
+          {
             ascending: true,
-          }),
-
-        supabase
-          .from("tournament_teams")
-          .select(`
-            id,
-            display_name,
-            status,
-
-            tournaments (
-              id,
-              name,
-              start_date,
-              end_date,
-              city,
-              state
-            ),
-
-            tournament_divisions (
-              id,
-              name,
-              age_group
-            )
-          `)
-          .eq("team_id", teamId)
-          .in("status", ["approved", "pending", "waitlist"]),
-      ])
-
-      if (teamResult.error) {
-        setError(teamResult.error.message)
-        setLoading(false)
-        return
+          }
+        )
+    : {
+        data: [],
+        error: null,
       }
 
-      if (scheduleResult.error) {
-        setError(scheduleResult.error.message)
-        setLoading(false)
-        return
-      }
+      console.log("TEAM PROFILE ORG:", organizationId)
+console.log("TEAM PROFILE SCHEDULE:", scheduleData)
+console.log("TEAM PROFILE SCHEDULE ERROR:", scheduleError)
 
-      if (tournamentResult.error) {
-        setError(tournamentResult.error.message)
-        setLoading(false)
-        return
-      }
+console.log(
+  "TEAM PROFILE TOURNAMENT RESULT:",
+  tournamentResult.data
+)
 
-      setTeam(teamResult.data as unknown as Team)
+console.log(
+  "TEAM PROFILE TOURNAMENT ERROR:",
+  tournamentResult.error
+)
+// CHECK SCHEDULE
+if (scheduleError) {
+  setError(scheduleError.message)
+  setLoading(false)
+  return
+}
 
-      setEvents(
-        (scheduleResult.data ?? []) as unknown as TeamEvent[]
-      )
+// SAVE EVERYTHING TO STATE
+setTeam(loadedTeam)
 
-      setTournaments(
-        (tournamentResult.data ?? []) as unknown as TournamentEntry[]
-      )
+setEvents(
+  (scheduleData ?? []) as unknown as TeamEvent[]
+)
 
+setTournaments(
+  (tournamentResult.data ?? []) as unknown as TournamentEntry[]
+)
       /*
         For now, keep public roster names private.
 

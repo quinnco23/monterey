@@ -118,10 +118,10 @@ useEffect(() => {
               state
             ),
   
-            tournaments (
-              id,
-              name
-            )
+            public_tournament:tournaments!organization_events_public_tournament_id_fkey (
+  id,
+  name
+)
           `)
           .eq("organization_id", organizationId)
           .eq("status", "scheduled")

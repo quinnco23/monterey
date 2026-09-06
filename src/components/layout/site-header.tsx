@@ -299,6 +299,37 @@ export function SiteHeader() {
                 </Link>
               ))}
 
+              <a
+  href="https://www.quinnglobal.com/fan"
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() => setMobileOpen(false)}
+  className="
+    gameon-flash-on
+    mt-4
+    flex
+    min-h-12
+    w-full
+    items-center
+    justify-center
+    border
+    border-scoreboard-amber
+    bg-scoreboard-amber
+    px-5
+    py-3
+    text-sm
+    font-black
+    
+    tracking-[0.16em]
+    text-scoreboard-dark
+    transition-all
+    hover:border-scoreboard-cream
+    hover:bg-scoreboard-cream
+  "
+>
+  gameOn
+</a>
+
             </nav>
 
             {/* MOBILE AUTH */}

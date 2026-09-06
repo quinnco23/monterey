@@ -36,10 +36,10 @@ type OrganizationEvent = {
     state: string | null
   } | null
 
-  tournaments: {
-    id: string
-    name: string
-  } | null
+  public_tournament: {
+  id: string
+  name: string
+} | null
 }
 
 type FilterValue =
@@ -71,54 +71,54 @@ export function OrganizationSchedulePage() {
       setError("")
 
       const [organizationResult, eventsResult] = await Promise.all([
-        supabase
-          .from("organizations")
-          .select(`
-            id,
-            name
-          `)
-          .eq("id", organizationId)
-          .single(),
+  supabase
+    .from("organizations")
+    .select(`
+      id,
+      name
+    `)
+    .eq("id", organizationId)
+    .single(),
 
-        supabase
-          .from("organization_events")
-          .select(`
-            id,
-            organization_id,
-            team_id,
-            event_type,
-            title,
-            description,
-            start_time,
-            end_time,
-            location_name,
-            opponent_name,
-            status,
+  supabase
+    .from("organization_events")
+    .select(`
+      id,
+      organization_id,
+      team_id,
+      event_type,
+      title,
+      description,
+      start_time,
+      end_time,
+      location_name,
+      opponent_name,
+      status,
 
-            teams (
-              id,
-              name,
-              age_group
-            ),
+      teams (
+        id,
+        name,
+        age_group
+      ),
 
-            booking_resources:resource_id (
-              id,
-              name,
-              city,
-              state
-            ),
+      booking_resources:resource_id (
+        id,
+        name,
+        city,
+        state
+      ),
 
-            tournaments (
-              id,
-              name
-            )
-          `)
-          .eq("organization_id", organizationId)
-          .neq("status", "cancelled")
-          .order("start_time", {
-            ascending: true,
-          }),
-      ])
+      public_tournament:tournaments!organization_events_public_tournament_id_fkey (
+        id,
+        name
+      )
+    `)
+    .eq("organization_id", organizationId)
+    .neq("status", "cancelled")
+    .order("start_time", {
+      ascending: true,
+    }),
+])
 
       if (organizationResult.error) {
         setError(organizationResult.error.message)
@@ -504,14 +504,14 @@ export function OrganizationSchedulePage() {
                               </p>
                             )}
 
-                            {event.tournaments && (
-                              <p className="mt-3 text-sm text-scoreboard-muted">
-                                Tournament:{" "}
-                                <span className="font-bold text-scoreboard-cream">
-                                  {event.tournaments.name}
-                                </span>
-                              </p>
-                            )}
+                          {event.public_tournament && (
+  <p className="mt-3 text-sm text-scoreboard-muted">
+    Tournament:{" "}
+    <span className="font-bold text-scoreboard-cream">
+      {event.public_tournament.name}
+    </span>
+  </p>
+)}
 
                             {event.description && (
                               <p className="mt-3 max-w-2xl text-sm leading-6 text-scoreboard-muted">

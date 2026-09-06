@@ -35,11 +35,6 @@ type Resource = {
   resource_type: string
 }
 
-type Tournament = {
-  id: string
-  name: string
-}
-
 type EventType =
   | "practice"
   | "scrimmage"
@@ -53,8 +48,27 @@ type EventStatus =
   | "completed"
   | "cancelled"
 
+  type DivisionDraft = {
+  id?: string
+  name: string
+  age_group: string
+  classification?: string
+}
+
+
+
+  function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
 export function EditOrganizationEventPage() {
   const { organizationId, eventId } = useParams()
+  const [divisions, setDivisions] =
+  useState<DivisionDraft[]>([])
 
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -67,9 +81,6 @@ export function EditOrganizationEventPage() {
 
   const [resources, setResources] =
     useState<Resource[]>([])
-
-  const [tournaments, setTournaments] =
-    useState<Tournament[]>([])
 
   const [eventType, setEventType] =
     useState<EventType>("practice")
@@ -89,6 +100,9 @@ export function EditOrganizationEventPage() {
   const [eventDate, setEventDate] =
     useState("")
 
+  const [endDate, setEndDate] =
+    useState("")
+
   const [startTime, setStartTime] =
     useState("")
 
@@ -104,9 +118,6 @@ export function EditOrganizationEventPage() {
   const [opponentName, setOpponentName] =
     useState("")
 
-  const [tournamentId, setTournamentId] =
-    useState("")
-
   const [loading, setLoading] =
     useState(true)
 
@@ -115,6 +126,11 @@ export function EditOrganizationEventPage() {
 
   const [error, setError] =
     useState("")
+    const [publiclyRegisterable, setPubliclyRegisterable] =
+  useState(false)
+
+const [publicTournamentId, setPublicTournamentId] =
+  useState<string | null>(null)
 
   useEffect(() => {
     async function loadPage() {
@@ -133,7 +149,6 @@ export function EditOrganizationEventPage() {
         organizationResult,
         teamsResult,
         resourcesResult,
-        tournamentsResult,
         eventResult,
       ] = await Promise.all([
         supabase
@@ -174,15 +189,6 @@ export function EditOrganizationEventPage() {
           .order("name"),
 
         supabase
-          .from("tournaments")
-          .select(`
-            id,
-            name
-          `)
-          .neq("status", "cancelled")
-          .order("start_date"),
-
-        supabase
           .from("organization_events")
           .select(`
             id,
@@ -196,8 +202,8 @@ export function EditOrganizationEventPage() {
             location_name,
             resource_id,
             opponent_name,
-            tournament_id,
-            status
+            status,
+            public_tournament_id
           `)
           .eq("id", eventId)
           .eq(
@@ -231,14 +237,6 @@ export function EditOrganizationEventPage() {
         return
       }
 
-      if (tournamentsResult.error) {
-        setError(
-          tournamentsResult.error.message
-        )
-        setLoading(false)
-        return
-      }
-
       if (eventResult.error) {
         setError(
           eventResult.error.message
@@ -260,13 +258,60 @@ export function EditOrganizationEventPage() {
         resourcesResult.data ?? []
       )
 
-      setTournaments(
-        tournamentsResult.data ?? []
-      )
+     const existingEvent =
+  eventResult.data
 
-      const existingEvent =
-        eventResult.data
+const existingPublicTournamentId =
+  existingEvent.public_tournament_id ?? null
 
+setPublicTournamentId(
+  existingPublicTournamentId
+)
+
+setPubliclyRegisterable(
+  Boolean(existingPublicTournamentId)
+)
+
+// LOAD TOURNAMENT DIVISIONS
+
+const {
+  data: divisionData,
+  error: divisionError,
+} =
+  existingPublicTournamentId
+    ? await supabase
+        .from("tournament_divisions")
+        .select(`
+          id,
+          name,
+          age_group
+        `)
+        .eq(
+          "tournament_id",
+          existingPublicTournamentId
+        )
+        .order("age_group")
+    : {
+        data: [],
+        error: null,
+      }
+
+if (divisionError) {
+  setError(divisionError.message)
+  setLoading(false)
+  return
+}
+
+setDivisions(
+  (divisionData ?? []).map(
+    (division) => ({
+      id: division.id,
+      name: division.name ?? "",
+      age_group:
+        division.age_group ?? "",
+    })
+  )
+)
       setEventType(
         existingEvent.event_type as EventType
       )
@@ -297,10 +342,6 @@ export function EditOrganizationEventPage() {
 
       setOpponentName(
         existingEvent.opponent_name ?? ""
-      )
-
-      setTournamentId(
-        existingEvent.tournament_id ?? ""
       )
 
       const start =
@@ -335,6 +376,18 @@ export function EditOrganizationEventPage() {
             existingEvent.end_time
           )
 
+        setEndDate(
+          [
+            end.getFullYear(),
+            String(
+              end.getMonth() + 1
+            ).padStart(2, "0"),
+            String(
+              end.getDate()
+            ).padStart(2, "0"),
+          ].join("-")
+        )
+
         setEndTime(
           [
             String(
@@ -346,6 +399,7 @@ export function EditOrganizationEventPage() {
           ].join(":")
         )
       } else {
+        setEndDate("")
         setEndTime("")
       }
 
@@ -358,9 +412,6 @@ export function EditOrganizationEventPage() {
   const showOpponent =
     eventType === "scrimmage" ||
     eventType === "game"
-
-  const showTournament =
-    eventType === "tournament"
 
   const selectedResource =
     useMemo(
@@ -402,27 +453,194 @@ export function EditOrganizationEventPage() {
       return
     }
 
+    if (
+      eventType === "tournament" &&
+      !endDate
+    ) {
+      setError(
+        "Tournament end date is required."
+      )
+      return
+    }
+
     const start =
       new Date(
         `${eventDate}T${startTime}:00`
       )
 
+    const effectiveEndDate =
+      eventType === "tournament"
+        ? endDate
+        : eventDate
+
     const end =
       endTime
         ? new Date(
-            `${eventDate}T${endTime}:00`
+            `${effectiveEndDate}T${endTime}:00`
           )
         : null
 
     if (end && end <= start) {
       setError(
-        "End time must be after start time."
+        "End date/time must be after start date/time."
       )
       return
     }
 
     setSaving(true)
     setError("")
+
+   let nextPublicTournamentId =
+  publicTournamentId
+
+if (
+  eventType === "tournament" &&
+  publiclyRegisterable
+) {
+  // CREATE PUBLIC TOURNAMENT
+  if (!publicTournamentId) {
+    const {
+      data,
+      error: tournamentError,
+    } =
+      await supabase
+        .from("tournaments")
+        .insert({
+          organization_id:
+            organizationId,
+
+          created_by_user_id:
+            user.id,
+
+          name:
+            title.trim(),
+
+          slug:
+            toSlug(title),
+
+          description:
+            description.trim() || null,
+
+          start_date:
+            eventDate,
+
+          end_date:
+            endDate,
+
+          status:
+            "registration_open",
+        })
+        .select("id")
+        .single()
+
+    if (tournamentError) {
+      setSaving(false)
+      setError(
+        tournamentError.message
+      )
+      return
+    }
+
+    nextPublicTournamentId =
+      data.id
+  }
+
+  // UPDATE EXISTING PUBLIC TOURNAMENT
+  else {
+    const {
+      error: tournamentUpdateError,
+    } =
+      await supabase
+        .from("tournaments")
+        .update({
+          name:
+            title.trim(),
+
+          description:
+            description.trim() || null,
+
+          start_date:
+            eventDate,
+
+          end_date:
+            endDate,
+        })
+        .eq(
+          "id",
+          publicTournamentId
+        )
+
+    if (tournamentUpdateError) {
+      setSaving(false)
+      setError(
+        tournamentUpdateError.message
+      )
+      return
+    }
+  }
+}
+
+/* SAVE TOURNAMENT DIVISIONS */
+
+if (
+  nextPublicTournamentId &&
+  eventType === "tournament" &&
+  publiclyRegisterable
+) {
+  const {
+    error: deleteError,
+  } =
+    await supabase
+      .from("tournament_divisions")
+      .delete()
+      .eq(
+        "tournament_id",
+        nextPublicTournamentId
+      )
+
+  if (deleteError) {
+    setSaving(false)
+    setError(
+      deleteError.message
+    )
+    return
+  }
+
+  const rows =
+    divisions
+      .filter(
+        (division) =>
+          division.age_group.trim()
+      )
+      .map((division) => ({
+        tournament_id:
+          nextPublicTournamentId,
+
+        age_group:
+          division.age_group.trim(),
+
+        name:
+          division.name.trim() ||
+          `${division.age_group.trim()} Division`,
+      }))
+
+  if (rows.length > 0) {
+    const {
+      error: divisionError,
+    } =
+      await supabase
+        .from("tournament_divisions")
+        .insert(rows)
+
+    if (divisionError) {
+      setSaving(false)
+      setError(
+        divisionError.message
+      )
+      return
+    }
+  }
+}
 
     const { error } =
       await supabase
@@ -464,15 +682,16 @@ export function EditOrganizationEventPage() {
                 null
               : null,
 
-          tournament_id:
-            showTournament
-              ? tournamentId || null
-              : null,
+         status,
 
-          status,
+public_tournament_id:
+  eventType === "tournament" &&
+  publiclyRegisterable
+    ? nextPublicTournamentId
+    : null,
 
-          updated_at:
-            new Date().toISOString(),
+updated_at:
+  new Date().toISOString(),
         })
         .eq("id", eventId)
         .eq(
@@ -510,6 +729,7 @@ export function EditOrganizationEventPage() {
     <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
 
       {/* HEADER */}
+
       <section className="border-b border-scoreboard-cream/20 bg-scoreboard-green">
 
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -529,6 +749,7 @@ export function EditOrganizationEventPage() {
             "
           >
             <ArrowLeft className="h-4 w-4" />
+
             Schedule
           </Link>
 
@@ -553,7 +774,13 @@ export function EditOrganizationEventPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="border border-scoreboard-cream/25 bg-scoreboard-green p-5 sm:p-8"
+          className="
+            border
+            border-scoreboard-cream/25
+            bg-scoreboard-green
+            p-5
+            sm:p-8
+          "
         >
 
           <div>
@@ -571,6 +798,7 @@ export function EditOrganizationEventPage() {
           <div className="mt-7 grid gap-5">
 
             {/* EVENT TYPE */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">
@@ -620,11 +848,13 @@ export function EditOrganizationEventPage() {
                 <option value="other">
                   Other
                 </option>
+
               </select>
 
             </label>
 
             {/* STATUS */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">
@@ -662,11 +892,13 @@ export function EditOrganizationEventPage() {
                 <option value="cancelled">
                   Cancelled
                 </option>
+
               </select>
 
             </label>
 
             {/* TEAM */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">
@@ -697,25 +929,28 @@ export function EditOrganizationEventPage() {
                   Organization Wide
                 </option>
 
-                {teams.map((team) => (
-                  <option
-                    key={team.id}
-                    value={team.id}
-                  >
-                    {[
-                      team.age_group,
-                      team.name,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </option>
-                ))}
+                {teams.map(
+                  (team) => (
+                    <option
+                      key={team.id}
+                      value={team.id}
+                    >
+                      {[
+                        team.age_group,
+                        team.name,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    </option>
+                  )
+                )}
 
               </select>
 
             </label>
 
             {/* TITLE */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">
@@ -725,7 +960,9 @@ export function EditOrganizationEventPage() {
               <input
                 value={title}
                 onChange={(e) =>
-                  setTitle(e.target.value)
+                  setTitle(
+                    e.target.value
+                  )
                 }
                 required
                 className="
@@ -745,124 +982,474 @@ export function EditOrganizationEventPage() {
             </label>
 
             {/* DATE / TIMES */}
-            <div className="grid gap-5 sm:grid-cols-3">
 
-              <label className="block">
+            {eventType === "tournament" ? (
+              <div className="grid gap-5 sm:grid-cols-2">
 
-                <span className="scoreboard-label text-scoreboard-cream">
-                  Date
-                </span>
+                <label className="block">
 
-                <div className="relative mt-2">
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    Start Date
+                  </span>
 
-                  <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+                  <div className="relative mt-2">
 
-                  <input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) =>
-                      setEventDate(
-                        e.target.value
-                      )
-                    }
-                    required
-                    className="
-                      w-full
-                      min-w-0
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      py-3
-                      pl-10
-                      pr-3
-                      text-base
-                      text-scoreboard-dark
-                    "
-                  />
+                    <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
 
-                </div>
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) =>
+                        setEventDate(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
 
-              </label>
+                  </div>
 
-              <label className="block">
+                </label>
 
-                <span className="scoreboard-label text-scoreboard-cream">
-                  Start
-                </span>
+                <label className="block">
 
-                <div className="relative mt-2">
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    End Date
+                  </span>
 
-                  <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+                  <div className="relative mt-2">
 
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) =>
-                      setStartTime(
-                        e.target.value
-                      )
-                    }
-                    required
-                    className="
-                      w-full
-                      min-w-0
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      py-3
-                      pl-10
-                      pr-3
-                      text-base
-                      text-scoreboard-dark
-                    "
-                  />
+                    <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
 
-                </div>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) =>
+                        setEndDate(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
 
-              </label>
+                  </div>
 
-              <label className="block">
+                </label>
 
-                <span className="scoreboard-label text-scoreboard-cream">
-                  End
-                </span>
+                <label className="block">
 
-                <div className="relative mt-2">
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    Start Time
+                  </span>
 
-                  <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+                  <div className="relative mt-2">
 
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) =>
-                      setEndTime(
-                        e.target.value
-                      )
-                    }
-                    className="
-                      w-full
-                      min-w-0
-                      rounded-none
-                      border
-                      border-scoreboard-cream/30
-                      bg-scoreboard-cream
-                      py-3
-                      pl-10
-                      pr-3
-                      text-base
-                      text-scoreboard-dark
-                    "
-                  />
+                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
 
-                </div>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) =>
+                        setStartTime(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
 
-              </label>
+                  </div>
 
-            </div>
+                </label>
+
+                <label className="block">
+
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    End Time
+                  </span>
+
+                  <div className="relative mt-2">
+
+                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) =>
+                        setEndTime(
+                          e.target.value
+                        )
+                      }
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
+
+                  </div>
+
+                </label>
+
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-3">
+
+                <label className="block">
+
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    Date
+                  </span>
+
+                  <div className="relative mt-2">
+
+                    <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) =>
+                        setEventDate(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
+
+                  </div>
+
+                </label>
+
+                <label className="block">
+
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    Start
+                  </span>
+
+                  <div className="relative mt-2">
+
+                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) =>
+                        setStartTime(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
+
+                  </div>
+
+                </label>
+
+                <label className="block">
+
+                  <span className="scoreboard-label text-scoreboard-cream">
+                    End
+                  </span>
+
+                  <div className="relative mt-2">
+
+                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) =>
+                        setEndTime(
+                          e.target.value
+                        )
+                      }
+                      className="
+                        w-full
+                        min-w-0
+                        rounded-none
+                        border
+                        border-scoreboard-cream/30
+                        bg-scoreboard-cream
+                        py-3
+                        pl-10
+                        pr-3
+                        text-base
+                        text-scoreboard-dark
+                      "
+                    />
+
+                  </div>
+
+                </label>
+
+              </div>
+            )}
+
+            {eventType === "tournament" && (
+  <div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
+
+    <p className="scoreboard-label text-scoreboard-amber">
+      Tournament Divisions
+    </p>
+
+    <p className="mt-2 text-sm text-scoreboard-muted">
+      Add the age groups teams can register for.
+    </p>
+
+    <div className="mt-5 space-y-4">
+
+      {divisions.map((division, index) => (
+        <div
+          key={division.id ?? index}
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+        >
+
+          <input
+            value={division.age_group}
+            onChange={(e) => {
+              const next = [...divisions]
+
+              next[index] = {
+                ...next[index],
+                age_group: e.target.value,
+              }
+
+              setDivisions(next)
+            }}
+            placeholder="10U"
+            className="
+              w-full
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              px-3
+              py-3
+              text-scoreboard-dark
+            "
+          />
+
+          <input
+            value={division.name}
+            onChange={(e) => {
+              const next = [...divisions]
+
+              next[index] = {
+                ...next[index],
+                name: e.target.value,
+              }
+
+              setDivisions(next)
+            }}
+            placeholder="Open Division"
+            className="
+              w-full
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              px-3
+              py-3
+              text-scoreboard-dark
+            "
+          />
+
+          <button
+            type="button"
+            onClick={() =>
+              setDivisions(
+                divisions.filter(
+                  (_, i) => i !== index
+                )
+              )
+            }
+            className="
+              border
+              border-scoreboard-cream/30
+              px-4
+              text-xs
+              font-black
+              uppercase
+              tracking-[0.10em]
+              hover:border-scoreboard-amber
+            "
+          >
+            Remove
+          </button>
+
+        </div>
+      ))}
+
+    </div>
+
+    <button
+      type="button"
+      onClick={() =>
+        setDivisions([
+          ...divisions,
+          {
+            name: "",
+            age_group: "",
+          },
+        ])
+      }
+      className="
+        mt-5
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.10em]
+        text-scoreboard-amber
+        hover:text-scoreboard-cream
+      "
+    >
+      + Add Division
+    </button>
+
+  </div>
+)}
+
+            {/* PUBLIC TOURNAMENT REGISTRATION */}
+
+{eventType === "tournament" && (
+  <div
+    className="
+      border
+      border-scoreboard-amber/40
+      bg-scoreboard-dark
+      p-5
+    "
+  >
+
+    <div className="flex items-start gap-4">
+
+      <input
+        id="public-registration"
+        type="checkbox"
+        checked={publiclyRegisterable}
+        onChange={(e) =>
+          setPubliclyRegisterable(
+            e.target.checked
+          )
+        }
+        className="
+          mt-1
+          h-5
+          w-5
+          accent-scoreboard-amber
+        "
+      />
+
+      <label
+        htmlFor="public-registration"
+        className="cursor-pointer"
+      >
+
+        <p className="scoreboard-label text-scoreboard-amber">
+          Public Registration
+        </p>
+
+        <p className="mt-2 font-black uppercase tracking-[0.04em]">
+          Allow Teams To Register
+        </p>
+
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-scoreboard-muted">
+          Publish this tournament to the public
+          tournament directory and allow teams to
+          register.
+        </p>
+
+      </label>
+
+    </div>
+
+    {publicTournamentId && (
+      <div className="mt-4 border-t border-scoreboard-cream/15 pt-4">
+
+        <p className="text-xs font-black uppercase tracking-[0.10em] text-scoreboard-amber">
+          ✓ Public Tournament Published
+        </p>
+
+      </div>
+    )}
+
+  </div>
+)}
 
             {/* RESOURCE */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">
@@ -908,7 +1495,8 @@ export function EditOrganizationEventPage() {
 
             </label>
 
-            {/* MANUAL LOCATION */}
+            {/* LOCATION */}
+
             {!resourceId && (
               <label className="block">
 
@@ -948,6 +1536,7 @@ export function EditOrganizationEventPage() {
             )}
 
             {/* OPPONENT */}
+
             {showOpponent && (
               <label className="block">
 
@@ -980,55 +1569,8 @@ export function EditOrganizationEventPage() {
               </label>
             )}
 
-            {/* TOURNAMENT */}
-            {showTournament && (
-              <label className="block">
-
-                <span className="scoreboard-label text-scoreboard-cream">
-                  Tournament
-                </span>
-
-                <select
-                  value={tournamentId}
-                  onChange={(e) =>
-                    setTournamentId(
-                      e.target.value
-                    )
-                  }
-                  className="
-                    mt-2
-                    w-full
-                    rounded-none
-                    border
-                    border-scoreboard-cream/30
-                    bg-scoreboard-cream
-                    px-3
-                    py-3
-                    text-base
-                    text-scoreboard-dark
-                  "
-                >
-                  <option value="">
-                    Select Tournament
-                  </option>
-
-                  {tournaments.map(
-                    (tournament) => (
-                      <option
-                        key={tournament.id}
-                        value={tournament.id}
-                      >
-                        {tournament.name}
-                      </option>
-                    )
-                  )}
-
-                </select>
-
-              </label>
-            )}
-
             {/* NOTES */}
+
             <label className="block">
 
               <span className="scoreboard-label text-scoreboard-cream">

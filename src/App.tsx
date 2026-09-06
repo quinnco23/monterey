@@ -48,6 +48,8 @@ import { TeamProfilePage } from "./team-profile-page"
 
 import { PublicSchedulePage } from "./pages/public-schedule-page"
 import { OrganizationMembersPage } from "./organization-members-page"
+import { TournamentRegistrationPage } from "./pages/tournament-registration-page"
+import { TournamentRegistrationSuccessPage } from "./pages/tournament-registration-success-page"
 export default function App() {
   return (
     <BrowserRouter>
@@ -171,6 +173,16 @@ export default function App() {
 <Route
   path="/dashboard/organizations/:organizationId/members"
   element={<OrganizationMembersPage />}
+/>
+
+<Route
+  path="/tournaments/:tournamentId/register"
+  element={<TournamentRegistrationPage />}
+/>
+
+<Route
+  path="/dashboard/registrations/success"
+  element={<TournamentRegistrationSuccessPage />}
 />
           
 

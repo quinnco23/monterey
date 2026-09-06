@@ -10,6 +10,8 @@ import {
   
   import { Button } from "@/components/ui/button"
   import { supabase } from "@/lib/supabase"
+
+  import { CalendarPlus } from "lucide-react"
   
   type Organization = {
     id: string
@@ -38,6 +40,23 @@ import {
     members: number
     tournaments: number
   }
+
+  type OrganizationEvent = {
+  id: string
+  team_id: string | null
+  event_type: string
+  title: string
+  start_time: string
+  end_time: string | null
+  location_name: string | null
+  status: string
+
+  teams: {
+    id: string
+    name: string
+    age_group: string | null
+  } | null
+}
   
   export function OrganizationDashboardPage() {
     const { organizationId } = useParams()
@@ -55,128 +74,189 @@ import {
   
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [events, setEvents] =
+  useState<OrganizationEvent[]>([])
     
-    type Tournament = {
-      id: string
-      name: string
-      start_date: string
-      end_date: string
-      city: string | null
-      state: string | null
-      status: string
-    }
+   
     
-    const [tournaments, setTournaments] = useState<Tournament[]>([])
+    
     useEffect(() => {
-      async function loadDashboard() {
-        if (!organizationId) return
-  
-        setLoading(true)
-        setError(null)
-  
-        const [
-          organizationResult,
-          teamsResult,
-          membersResult,
-        ] = await Promise.all([
-          supabase
-            .from("organizations")
-            .select(`
-              id,
-              name,
-              slug,
-              organization_type,
-              city,
-              state
-            `)
-            .eq("id", organizationId)
-            .single(),
+  async function loadDashboard() {
+    if (!organizationId) return
 
-            
-  
-            supabase
-            .from("teams")
-            .select(`
-              id,
-              organization_id,
-              name,
-              slug,
-              age_group,
-              classification,
-              season_year,
-              city,
-              state,
-              status
-            `)
-            .eq("organization_id", organizationId)
-            .order("name"),
+    setLoading(true)
+    setError(null)
 
-            
-  
-          supabase
-            .from("organization_members")
-            .select("*", { count: "exact", head: true })
-            .eq("organization_id", organizationId)
-            .eq("status", "active"),
+    const now = new Date().toISOString()
 
+    const [
+      organizationResult,
+      teamsResult,
+      membersResult,
+      eventsResult,
+    ] = await Promise.all([
+      // ORGANIZATION
+      supabase
+        .from("organizations")
+        .select(`
+          id,
+          name,
+          slug,
+          organization_type,
+          city,
+          state
+        `)
+        .eq("id", organizationId)
+        .single(),
 
-            
-        ])
-  
-        if (organizationResult.error) {
-          setError(organizationResult.error.message)
-          setLoading(false)
-          return
-        }
-  
-        setOrganization(organizationResult.data)
+      // TEAMS
+      supabase
+        .from("teams")
+        .select(`
+          id,
+          organization_id,
+          name,
+          slug,
+          age_group,
+          classification,
+          season_year,
+          city,
+          state,
+          status
+        `)
+        .eq("organization_id", organizationId)
+        .order("name"),
 
-        if (teamsResult.error) {
-            setError(teamsResult.error.message)
-            setLoading(false)
-            return
-          }
-          
-          setTeams(teamsResult.data ?? [])
-  
-          setStats({
-            teams: teamsResult.data?.length ?? 0,
-            members: membersResult.count ?? 0,
-            tournaments: 0,
-          })
+      // MEMBERS
+      supabase
+        .from("organization_members")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq("status", "active"),
 
-          const { data: tournamentData, error: tournamentError } =
-  await supabase
-    .from("tournaments")
-    .select(`
-      id,
-      name,
-      start_date,
-      end_date,
-      city,
-      state,
-      status
-    `)
-    .gte("end_date", new Date().toISOString().slice(0, 10))
-    .order("start_date", { ascending: true })
-    .limit(5)
+      // UPCOMING ORGANIZATION EVENTS
+      supabase
+        .from("organization_events")
+        .select(`
+          id,
+          team_id,
+          event_type,
+          title,
+          start_time,
+          end_time,
+          location_name,
+          status,
 
-if (tournamentError) {
-  console.error(
-    "Unable to load tournaments:",
-    tournamentError
+          teams (
+            id,
+            name,
+            age_group
+          )
+        `)
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq("status", "scheduled")
+        .or(
+          `end_time.gte.${now},and(end_time.is.null,start_time.gte.${now})`
+        )
+        .order("start_time", {
+          ascending: true,
+        })
+        .limit(20),
+    ])
+
+    // ORGANIZATION ERROR
+    if (organizationResult.error) {
+      setError(
+        organizationResult.error.message
+      )
+      setLoading(false)
+      return
+    }
+
+    // TEAMS ERROR
+    if (teamsResult.error) {
+      setError(
+        teamsResult.error.message
+      )
+      setLoading(false)
+      return
+    }
+
+    // MEMBERS ERROR
+    if (membersResult.error) {
+      setError(
+        membersResult.error.message
+      )
+      setLoading(false)
+      return
+    }
+
+    // EVENTS ERROR
+    if (eventsResult.error) {
+      setError(
+        eventsResult.error.message
+      )
+      setLoading(false)
+      return
+    }
+
+    const upcomingEvents =
+  (eventsResult.data ?? []) as unknown as OrganizationEvent[]
+
+    const scheduledTournaments =
+      upcomingEvents.filter(
+        (event) =>
+          event.event_type ===
+          "tournament"
+      )
+
+    setOrganization(
+      organizationResult.data
+    )
+
+    setTeams(
+      teamsResult.data ?? []
+    )
+
+    setEvents(
+      upcomingEvents
+    )
+
+    setStats({
+      teams:
+        teamsResult.data?.length ?? 0,
+
+      members:
+        membersResult.count ?? 0,
+
+      tournaments:
+        scheduledTournaments.length,
+    })
+
+    setLoading(false)
+  }
+
+  void loadDashboard()
+}, [organizationId])
+
+    const scheduledTournaments =
+  events.filter(
+    (event) =>
+      event.event_type ===
+      "tournament"
   )
-} else {
-  setTournaments(tournamentData ?? [])
-}
-  
-        setLoading(false)
-      }
-  
-      loadDashboard()
-    }, [organizationId])
 
-    
+const upcomingSchedule =
+  events.slice(0, 5)
   
     if (loading) {
       return (
@@ -292,7 +372,7 @@ if (tournamentError) {
                     Settings
                   </Button>
                 </Link>
-                <Link
+                {/* <Link
   to={`/dashboard/organizations/${organization.id}/schedule`}
   className="
     border
@@ -314,6 +394,33 @@ if (tournamentError) {
   <p className="mt-3 text-sm text-scoreboard-muted">
     Practices, scrimmages, games, and tournaments.
   </p>
+</Link> */}
+<Link
+  to={`/dashboard/organizations/${organizationId}/schedule/new`}
+  className="
+    inline-flex
+    min-h-11
+    items-center
+    justify-center
+    gap-2
+    rounded-none
+    border
+    border-scoreboard-amber
+    bg-scoreboard-amber
+    px-5
+    py-3
+    text-xs
+    font-black
+    uppercase
+    tracking-[0.12em]
+    text-scoreboard-dark
+    transition-colors
+    hover:border-scoreboard-cream
+    hover:bg-scoreboard-cream
+  "
+>
+  <CalendarPlus className="h-4 w-4" />
+  Schedule Event
 </Link>
 
                 <Link
@@ -574,23 +681,31 @@ if (tournamentError) {
 </Link>
 
 {/* TOURNAMENTS */}
+{/* UPCOMING SCHEDULE */}
 <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
 
   <div className="flex items-start justify-between gap-4">
 
     <div>
       <p className="scoreboard-label text-scoreboard-amber">
-        Competition
+        Calendar
       </p>
 
       <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
-        Tournaments
+        Upcoming events
       </h2>
     </div>
 
     <Link
-      to="/tournaments"
-      className="text-xs font-black uppercase tracking-[0.10em] text-scoreboard-amber hover:text-scoreboard-cream"
+      to={`/dashboard/organizations/${organization.id}/schedule`}
+      className="
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.10em]
+        text-scoreboard-amber
+        hover:text-scoreboard-cream
+      "
     >
       View All →
     </Link>
@@ -599,22 +714,39 @@ if (tournamentError) {
 
   <div className="mt-6 border-t border-scoreboard-cream/20">
 
-    {tournaments.length === 0 ? (
+    {upcomingSchedule.length === 0 ? (
       <div className="py-5">
+
         <p className="text-sm text-scoreboard-muted">
-          No upcoming tournaments.
+          No upcoming events.
         </p>
+
+        <Link
+          to={`/dashboard/organizations/${organization.id}/schedule/new`}
+          className="
+            mt-4
+            inline-flex
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.10em]
+            text-scoreboard-amber
+            hover:text-scoreboard-cream
+          "
+        >
+          + Schedule Event
+        </Link>
+
       </div>
     ) : (
-      tournaments.map((tournament) => {
-        const start = new Date(
-          `${tournament.start_date}T12:00:00`
-        )
+      upcomingSchedule.map((event) => {
+        const start =
+          new Date(event.start_time)
 
         return (
           <Link
-            key={tournament.id}
-            to={`/tournaments/${tournament.id}`}
+            key={event.id}
+            to={`/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`}
             className="
               group
               flex
@@ -630,32 +762,60 @@ if (tournamentError) {
 
             <div className="min-w-0">
 
-              <p className="font-black uppercase tracking-[0.04em] group-hover:text-scoreboard-amber">
-                {tournament.name}
+              <div className="flex flex-wrap items-center gap-2">
+
+                <span className="scoreboard-label text-scoreboard-amber">
+                  {event.event_type}
+                </span>
+
+                {event.teams && (
+                  <span className="text-xs text-scoreboard-muted">
+                    {[
+                      event.teams.age_group,
+                      event.teams.name,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </span>
+                )}
+
+              </div>
+
+              <p className="
+                mt-2
+                font-black
+                uppercase
+                tracking-[0.04em]
+                group-hover:text-scoreboard-amber
+              ">
+                {event.title}
               </p>
 
               <p className="mt-1 text-xs text-scoreboard-muted">
                 {start.toLocaleDateString([], {
+                  weekday: "short",
                   month: "short",
                   day: "numeric",
-                  year: "numeric",
                 })}
 
-                {(tournament.city || tournament.state) && (
+                {" • "}
+
+                {start.toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+
+                {event.location_name && (
                   <>
                     {" • "}
-                    {[tournament.city, tournament.state]
-                      .filter(Boolean)
-                      .join(", ")}
+                    {event.location_name}
                   </>
                 )}
               </p>
 
             </div>
 
-            <span className="shrink-0 text-scoreboard-amber">
-              →
-            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-scoreboard-amber" />
 
           </Link>
         )
@@ -665,6 +825,157 @@ if (tournamentError) {
   </div>
 
 </div>
+
+
+{/* SCHEDULED TOURNAMENTS */}
+{/* <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+
+  <div className="flex items-start justify-between gap-4">
+
+    <div>
+      <p className="scoreboard-label text-scoreboard-amber">
+        Competition
+      </p>
+
+      <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
+        Scheduled Tournaments
+      </h2>
+    </div>
+
+    <Link
+      to={`/dashboard/organizations/${organization.id}/schedule`}
+      className="
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.10em]
+        text-scoreboard-amber
+        hover:text-scoreboard-cream
+      "
+    >
+      View Schedule →
+    </Link>
+
+  </div>
+
+  <div className="mt-6 border-t border-scoreboard-cream/20">
+
+    {scheduledTournaments.length === 0 ? (
+      <div className="py-5">
+
+        <p className="text-sm text-scoreboard-muted">
+          No tournaments currently scheduled.
+        </p>
+
+        <Link
+          to={`/dashboard/organizations/${organization.id}/schedule/new`}
+          className="
+            mt-4
+            inline-flex
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.10em]
+            text-scoreboard-amber
+            hover:text-scoreboard-cream
+          "
+        >
+          + Schedule Tournament
+        </Link>
+
+      </div>
+    ) : (
+      scheduledTournaments.map((event) => {
+        const start =
+          new Date(event.start_time)
+
+        const end =
+          event.end_time
+            ? new Date(event.end_time)
+            : null
+
+        return (
+          <Link
+            key={event.id}
+            to={`/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`}
+            className="
+              group
+              flex
+              items-center
+              justify-between
+              gap-4
+              border-b
+              border-scoreboard-cream/15
+              py-4
+              last:border-b-0
+            "
+          >
+
+            <div className="min-w-0">
+
+              <p className="
+                font-black
+                uppercase
+                tracking-[0.04em]
+                group-hover:text-scoreboard-amber
+              ">
+                {event.title}
+              </p>
+
+              <p className="mt-1 text-xs text-scoreboard-muted">
+
+                {start.toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                })}
+
+                {end && (
+                  <>
+                    {" – "}
+
+                    {end.toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </>
+                )}
+
+              </p>
+
+              {(event.teams ||
+                event.location_name) && (
+                <p className="mt-1 text-xs text-scoreboard-muted">
+
+                  {event.teams &&
+                    [
+                      event.teams.age_group,
+                      event.teams.name,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+
+                  {event.teams &&
+                    event.location_name &&
+                    " • "}
+
+                  {event.location_name}
+
+                </p>
+              )}
+
+            </div>
+
+            <ArrowRight className="h-4 w-4 shrink-0 text-scoreboard-amber" />
+
+          </Link>
+        )
+      })
+    )}
+
+  </div>
+
+</div> */}
 
 {/* SETTINGS */}
 <Link

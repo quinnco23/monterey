@@ -48,10 +48,49 @@ type SupabaseRosterMember = {
   secondary_position: string | null
   roster_status: string
   player: Player | Player[] | null
+
+  
+}
+
+type TeamEvent = {
+  id: string
+  event_type: string
+  title: string
+  start_time: string
+  end_time: string | null
+  location_name: string | null
+  opponent_name: string | null
+  status: string
+}
+
+type TeamTournamentRegistration = {
+  id: string
+  status: string
+
+  tournaments: {
+    id: string
+    name: string
+    start_date: string
+    end_date: string
+    city: string | null
+    state: string | null
+    status: string
+  } | null
+
+  tournament_divisions: {
+    id: string
+    name: string
+    age_group: string | null
+  } | null
 }
 
 export function TeamDashboardPage() {
   const { organizationId, teamId } = useParams()
+  const [events, setEvents] =
+  useState<TeamEvent[]>([])
+
+const [tournamentRegistrations, setTournamentRegistrations] =
+  useState<TeamTournamentRegistration[]>([])
 
   const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
@@ -117,6 +156,76 @@ if (rosterError) {
   return
 }
 
+const now =
+  new Date().toISOString()
+
+const { data: eventData, error: eventError } =
+  await supabase
+    .from("organization_events")
+    .select(`
+      id,
+      event_type,
+      title,
+      start_time,
+      end_time,
+      location_name,
+      opponent_name,
+      status
+    `)
+    .eq("organization_id", organizationId)
+    .eq("team_id", teamId)
+    .eq("status", "scheduled")
+    .or(
+      `end_time.gte.${now},and(end_time.is.null,start_time.gte.${now})`
+    )
+    .order("start_time", {
+      ascending: true,
+    })
+    .limit(5)
+
+if (eventError) {
+  setError(eventError.message)
+  setLoading(false)
+  return
+}
+
+const {
+  data: tournamentData,
+  error: tournamentError,
+} =
+  await supabase
+    .from("tournament_teams")
+    .select(`
+      id,
+      status,
+
+      tournaments (
+        id,
+        name,
+        start_date,
+        end_date,
+        city,
+        state,
+        status
+      ),
+
+      tournament_divisions (
+        id,
+        name,
+        age_group
+      )
+    `)
+    .eq("team_id", teamId)
+    .order("created_at", {
+      ascending: false,
+    })
+
+if (tournamentError) {
+  setError(tournamentError.message)
+  setLoading(false)
+  return
+}
+
 const rawRoster = (rosterData ?? []) as unknown as SupabaseRosterMember[]
 
 const normalizedRoster: RosterMember[] = rawRoster.map((member) => ({
@@ -132,7 +241,17 @@ const normalizedRoster: RosterMember[] = rawRoster.map((member) => ({
 }))
 
 setTeam(teamData)
+
 setRoster(normalizedRoster)
+
+setEvents(
+  (eventData ?? []) as TeamEvent[]
+)
+
+setTournamentRegistrations(
+  (tournamentData ?? []) as unknown as TeamTournamentRegistration[]
+)
+
 setLoading(false)
       console.log("RAW ROSTER DATA:", rosterData)
 console.log("ROSTER ERROR:", rosterError)
@@ -293,10 +412,10 @@ console.log("ROSTER ERROR:", rosterError)
           />
 
           <StatBlock
-            label="Tournaments"
-            value="0"
-            icon={Trophy}
-          />
+  label="Tournaments"
+  value={String(tournamentRegistrations.length)}
+  icon={Trophy}
+/>
 
         </div>
       </section>
@@ -418,12 +537,122 @@ console.log("ROSTER ERROR:", rosterError)
             action="Connect GameOn"
           />
 
-          <DashboardPanel
-            eyebrow="Schedule"
-            title="Upcoming"
-            description="No games or tournaments are currently scheduled for this team."
-            action="View Schedule"
-          />
+          <div className="scoreboard-panel p-4">
+  <div className="border border-scoreboard-cream/30 bg-scoreboard-green p-6">
+
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="scoreboard-label text-scoreboard-amber">
+          Schedule
+        </p>
+
+        <h2 className="mt-2 text-xl font-black uppercase tracking-[0.07em]">
+          Upcoming
+        </h2>
+      </div>
+
+      <CalendarDays className="h-5 w-5 text-scoreboard-amber" />
+    </div>
+
+    <div className="mt-5 border-t border-scoreboard-cream/20">
+
+      {events.length === 0 ? (
+        <div className="py-5">
+          <p className="text-sm text-scoreboard-muted">
+            No upcoming events for this team.
+          </p>
+        </div>
+      ) : (
+        events.map((event) => {
+          const start = new Date(event.start_time)
+
+          return (
+            <Link
+              key={event.id}
+              to={`/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`}
+              className="
+                group
+                block
+                border-b
+                border-scoreboard-cream/15
+                py-4
+                last:border-b-0
+              "
+            >
+              <div className="flex items-start justify-between gap-4">
+
+                <div className="min-w-0">
+
+                  <p className="scoreboard-label text-scoreboard-amber">
+                    {event.event_type.replaceAll("_", " ")}
+                  </p>
+
+                  <p className="
+                    mt-2
+                    font-black
+                    uppercase
+                    tracking-[0.04em]
+                    group-hover:text-scoreboard-amber
+                  ">
+                    {event.title}
+                  </p>
+
+                  <p className="mt-2 text-xs text-scoreboard-muted">
+                    {start.toLocaleDateString([], {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+
+                    {" • "}
+
+                    {start.toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+
+                  {event.location_name && (
+                    <p className="mt-1 text-xs text-scoreboard-muted">
+                      {event.location_name}
+                    </p>
+                  )}
+
+                </div>
+
+                <span className="text-scoreboard-amber">
+                  →
+                </span>
+
+              </div>
+            </Link>
+          )
+        })
+      )}
+
+    </div>
+
+    <Link
+      to={`/dashboard/organizations/${organizationId}/schedule`}
+      className="
+        mt-5
+        inline-flex
+        border-t
+        border-scoreboard-cream/20
+        pt-4
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.14em]
+        text-scoreboard-cream
+        hover:text-scoreboard-amber
+      "
+    >
+      View Schedule →
+    </Link>
+
+  </div>
+</div>
 
         </div>
 
