@@ -491,6 +491,7 @@ const upcomingSchedule =
                 >
                   <Button
                     className="
+                    min-h-11
                       rounded-none
                       border
                       border-scoreboard-cream
@@ -501,6 +502,8 @@ const upcomingSchedule =
                       text-scoreboard-dark
                       hover:bg-scoreboard-amber
                       hover:text-scoreboard-dark
+                       px-6
+                       py-6
                     "
                   >
                     Create Team
@@ -511,27 +514,7 @@ const upcomingSchedule =
 
                 
   
-                <Link
-                  to={`/dashboard/organizations/${organization.id}/settings`}
-                >
-                  <Button
-                    variant="outline"
-                    className="
-                      rounded-none
-                      border-scoreboard-cream/40
-                      bg-transparent
-                      font-black
-                      uppercase
-                      tracking-[0.12em]
-                      text-scoreboard-cream
-                      hover:bg-scoreboard-light
-                      hover:text-scoreboard-cream
-                    "
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Button>
-                </Link>
+                
                 {/* <Link
   to={`/dashboard/organizations/${organization.id}/schedule`}
   className="
@@ -600,6 +583,28 @@ const upcomingSchedule =
 >
   My Reservations
 </Link>
+
+<Link
+                  to={`/dashboard/organizations/${organization.id}/settings`}
+                >
+                  <Button
+                    variant="outline"
+                    className="
+                      rounded-none
+                      border-scoreboard-cream/40
+                      bg-transparent
+                      font-black
+                      uppercase
+                      tracking-[0.12em]
+                      text-scoreboard-cream
+                      hover:bg-scoreboard-light
+                      hover:text-scoreboard-cream
+                    "
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Button>
+                </Link>
   
               </div>
             </div>
@@ -659,9 +664,7 @@ const upcomingSchedule =
     p-5
   "
 >
-  <div className="scoreboard-label">
-    Organization
-  </div>
+  
 
   <div className="mt-2 flex items-end justify-between">
     <div>
@@ -674,7 +677,7 @@ const upcomingSchedule =
       </p>
     </div>
 
-    <span className="text-scoreboard-amber">
+    <span className="text-scoreboard-amber px-3">
       View →
     </span>
   </div>
@@ -736,7 +739,7 @@ const upcomingSchedule =
         "
       >
         Create Team
-        <ArrowRight className="h-4 w-4" />
+        <ArrowRight className="h-4 w-4 "  />
       </Link>
 
     </div>
@@ -801,7 +804,7 @@ const upcomingSchedule =
 
           <div className="mt-7 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
 
-            <span className="text-xs font-black uppercase tracking-[0.12em]">
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber ">
               Team Dashboard
             </span>
 

@@ -20,7 +20,7 @@ export function EditPlayerPage() {
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [age, setAge] = useState("")
+  const [graduationYear, setGraduationYear] = useState("")
 
   const [jerseyNumber, setJerseyNumber] = useState("")
   const [primaryPosition, setPrimaryPosition] = useState("")
@@ -32,63 +32,87 @@ export function EditPlayerPage() {
 
   useEffect(() => {
     async function loadPlayer() {
-      if (!teamId || !playerId) {
-        setError("Missing team or player ID.")
+      if (!organizationId || !teamId || !playerId) {
+        setError("Missing organization, team, or player ID.")
         setLoading(false)
         return
       }
-
+  
+      // Load the main player record
       const { data: playerData, error: playerError } =
         await supabase
           .from("players")
           .select(`
             id,
+            organization_id,
             first_name,
             last_name,
-            age
+            graduation_year
           `)
           .eq("id", playerId)
-          .single()
-
+          .eq("organization_id", organizationId)
+          .maybeSingle()
+  
       if (playerError) {
         setError(playerError.message)
         setLoading(false)
         return
       }
-
+  
+      if (!playerData) {
+        setError("Player not found.")
+        setLoading(false)
+        return
+      }
+  
+      // Load this player's team roster information
       const { data: rosterData, error: rosterError } =
         await supabase
-          .from("team_roster_members")
+          .from("team_players")
           .select(`
             id,
             jersey_number,
             primary_position,
             secondary_position,
-            roster_status
+            roster_status,
+            active
           `)
           .eq("team_id", teamId)
           .eq("player_id", playerId)
-          .single()
-
+          .eq("active", true)
+          .maybeSingle()
+  
       if (rosterError) {
         setError(rosterError.message)
         setLoading(false)
         return
       }
-
-      setFirstName(playerData.first_name)
-      setLastName(playerData.last_name)
-      setAge(playerData.age ? String(playerData.age) : "")
-
+  
+      if (!rosterData) {
+        setError("This player is not currently on this team's roster.")
+        setLoading(false)
+        return
+      }
+  
+      // Populate the form
+      setFirstName(playerData.first_name ?? "")
+      setLastName(playerData.last_name ?? "")
+  
+      setGraduationYear(
+        playerData.graduation_year
+          ? String(playerData.graduation_year)
+          : ""
+      )
+  
       setJerseyNumber(rosterData.jersey_number ?? "")
       setPrimaryPosition(rosterData.primary_position ?? "")
       setSecondaryPosition(rosterData.secondary_position ?? "")
-
+  
       setLoading(false)
     }
-
+  
     void loadPlayer()
-  }, [teamId, playerId])
+  }, [organizationId, teamId, playerId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -99,14 +123,17 @@ export function EditPlayerPage() {
     setError("")
 
     const { error: playerError } = await supabase
-      .from("players")
-      .update({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        age: age ? Number(age) : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", playerId)
+    .from("players")
+    .update({
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      graduation_year: graduationYear
+        ? Number(graduationYear)
+        : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", playerId)
+    .eq("organization_id", organizationId)
 
     if (playerError) {
       setError(playerError.message)
@@ -207,12 +234,12 @@ console.log("UPDATED ROSTER:", updatedRoster)
                 required
               />
 
-              <PlayerInput
-                label="Age"
-                value={age}
-                onChange={setAge}
-                type="number"
-              />
+<PlayerInput
+  label="Graduation Year"
+  value={graduationYear}
+  onChange={setGraduationYear}
+  type="number"
+/>
 
               <PlayerInput
                 label="Jersey Number"
