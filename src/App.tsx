@@ -50,6 +50,16 @@ import { PublicSchedulePage } from "./pages/public-schedule-page"
 import { OrganizationMembersPage } from "./organization-members-page"
 import { TournamentRegistrationPage } from "./pages/tournament-registration-page"
 import { TournamentRegistrationSuccessPage } from "./pages/tournament-registration-success-page"
+import { BackgroundCheckPage } from "./pages/background-check-page"
+import { TournamentSchedulePage } from "./pages/tournement-schedule-page"
+import { TournamentScheduleGamePage } from "./pages/tournement-schedule-game-page"
+import OrganizationPlayersPage from "./pages/organization-players-page"
+import OrganizationPlayerPage from "./pages/organization-player-page"
+
+import NewOrganizationPlayerPage from "./pages/new-organization-player-page"
+
+
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -184,7 +194,28 @@ export default function App() {
   path="/dashboard/registrations/success"
   element={<TournamentRegistrationSuccessPage />}
 />
-          
+
+<Route
+  path="/dashboard/organizations/:organizationId/members/:memberId/background-check"
+  element={<BackgroundCheckPage />}
+/>
+
+<Route
+  path="/dashboard/organizations/:organizationId/players"
+  element={<OrganizationPlayersPage />}
+/>
+
+
+<Route
+  path="/dashboard/organizations/:organizationId/players/:playerId"
+  element={<OrganizationPlayerPage />}
+/>
+
+<Route
+  path="/dashboard/organizations/:organizationId/players/new"
+  element={<NewOrganizationPlayerPage />}
+/>
+
 
           </Route>
 
@@ -214,8 +245,17 @@ export default function App() {
               element={<AdminTournamentPage />}
             />
 
+<Route
+  path="/dashboard/tournaments/:tournamentId/schedule"
+  element={<TournamentSchedulePage />}
 
+  
+/>
 
+<Route
+  path="/dashboard/tournaments/:tournamentId/schedule/new"
+  element={<TournamentScheduleGamePage />}
+/>
 
 
           </Route>

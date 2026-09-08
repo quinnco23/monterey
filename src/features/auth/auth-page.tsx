@@ -116,7 +116,7 @@ export function AuthPage({ mode }: AuthPageProps) {
           <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
             {isLogin
               ? "Sign in to manage your teams, organizations, registrations, and bookings."
-              : "Create an account to start building your baseball organization."}
+              : "Create an account to start building your organization."}
           </p>
         </div>
 

@@ -123,7 +123,7 @@ export function OnboardingPage() {
                     setSlug(toSlug(e.target.value))
                   }
                 }}
-                placeholder="Santa Cruz Waves"
+                placeholder="Name"
                 required
                 minLength={2}
               />
@@ -179,7 +179,7 @@ export function OnboardingPage() {
                   onChange={(e) =>
                     setSlug(toSlug(e.target.value))
                   }
-                  placeholder="santa-cruz-waves"
+                  placeholder="santa-cruz-ballers"
                   required
                 />
               </div>

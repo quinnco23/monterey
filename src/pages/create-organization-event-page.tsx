@@ -979,7 +979,7 @@ export function CreateOrganizationEventPage() {
                       e.target.value
                     )
                   }
-                  placeholder="SC Waves 10U"
+                  placeholder="name"
                   className="
                     mt-2
                     w-full

@@ -37,9 +37,13 @@ type OrganizationEvent = {
   } | null
 
   public_tournament: {
-  id: string
-  name: string
-} | null
+    id: string
+    name: string
+  } | null
+
+  public_tournament_id?: string | null
+  source?: "organization_event" | "registered_tournament"
+  tournament_id?: string
 }
 
 type FilterValue =
@@ -70,58 +74,77 @@ export function OrganizationSchedulePage() {
       setLoading(true)
       setError("")
 
-      const [organizationResult, eventsResult] = await Promise.all([
-  supabase
-    .from("organizations")
-    .select(`
-      id,
-      name
-    `)
-    .eq("id", organizationId)
-    .single(),
+      const [
+        organizationResult,
+        teamsResult,
+        eventsResult,
+      ] = await Promise.all([
+        supabase
+          .from("organizations")
+          .select(`
+            id,
+            name
+          `)
+          .eq("id", organizationId)
+          .single(),
 
-  supabase
-    .from("organization_events")
-    .select(`
-      id,
-      organization_id,
-      team_id,
-      event_type,
-      title,
-      description,
-      start_time,
-      end_time,
-      location_name,
-      opponent_name,
-      status,
+        supabase
+          .from("teams")
+          .select(`
+            id
+          `)
+          .eq("organization_id", organizationId)
+          .eq("status", "active"),
 
-      teams (
-        id,
-        name,
-        age_group
-      ),
+        supabase
+          .from("organization_events")
+          .select(`
+            id,
+            organization_id,
+            team_id,
+            event_type,
+            title,
+            description,
+            start_time,
+            end_time,
+            location_name,
+            opponent_name,
+            status,
+            public_tournament_id,
 
-      booking_resources:resource_id (
-        id,
-        name,
-        city,
-        state
-      ),
+            teams (
+              id,
+              name,
+              age_group
+            ),
 
-      public_tournament:tournaments!organization_events_public_tournament_id_fkey (
-        id,
-        name
-      )
-    `)
-    .eq("organization_id", organizationId)
-    .neq("status", "cancelled")
-    .order("start_time", {
-      ascending: true,
-    }),
-])
+            booking_resources:resource_id (
+              id,
+              name,
+              city,
+              state
+            ),
+
+            public_tournament:tournaments!organization_events_public_tournament_id_fkey (
+              id,
+              name
+            )
+          `)
+          .eq("organization_id", organizationId)
+          .neq("status", "cancelled")
+          .order("start_time", {
+            ascending: true,
+          }),
+      ])
 
       if (organizationResult.error) {
         setError(organizationResult.error.message)
+        setLoading(false)
+        return
+      }
+
+      if (teamsResult.error) {
+        setError(teamsResult.error.message)
         setLoading(false)
         return
       }
@@ -132,14 +155,127 @@ export function OrganizationSchedulePage() {
         return
       }
 
+      const teamIds =
+        (teamsResult.data ?? []).map((team) => team.id)
+
+      const {
+        data: registeredTournamentData,
+        error: registeredTournamentError,
+      } =
+        teamIds.length > 0
+          ? await supabase
+              .from("tournament_teams")
+              .select(`
+                id,
+                team_id,
+                status,
+
+                teams (
+                  id,
+                  name,
+                  age_group
+                ),
+
+                tournaments (
+                  id,
+                  name,
+                  start_date,
+                  end_date,
+                  city,
+                  state,
+                  status
+                )
+              `)
+              .in("team_id", teamIds)
+              .in("status", [
+                "pending",
+                "approved",
+                "waitlist",
+              ])
+          : {
+              data: [],
+              error: null,
+            }
+
+      if (registeredTournamentError) {
+        setError(registeredTournamentError.message)
+        setLoading(false)
+        return
+      }
+
+      const organizationEvents: OrganizationEvent[] =
+        ((eventsResult.data ?? []) as unknown as OrganizationEvent[])
+          .map((event) => ({
+            ...event,
+            source: "organization_event",
+          }))
+
+      const alreadyScheduledTournamentIds =
+        new Set(
+          organizationEvents
+            .map((event) => event.public_tournament_id)
+            .filter(Boolean)
+        )
+
+      const registeredTournamentEvents: OrganizationEvent[] =
+        (registeredTournamentData ?? [])
+          .filter((entry: any) => {
+            const tournament = entry.tournaments
+
+            if (!tournament) {
+              return false
+            }
+
+            return !alreadyScheduledTournamentIds.has(
+              tournament.id
+            )
+          })
+          .map((entry: any) => {
+            const tournament = entry.tournaments
+
+            return {
+              id: `registration-${entry.id}`,
+              organization_id: organizationId,
+              team_id: entry.team_id,
+              event_type: "tournament",
+              title: tournament.name,
+              description: null,
+              start_time: `${tournament.start_date}T12:00:00`,
+              end_time: tournament.end_date
+                ? `${tournament.end_date}T12:00:00`
+                : null,
+              location_name:
+                [tournament.city, tournament.state]
+                  .filter(Boolean)
+                  .join(", ") || null,
+              opponent_name: null,
+              status: entry.status,
+              teams: entry.teams ?? null,
+              booking_resources: null,
+              public_tournament: {
+                id: tournament.id,
+                name: tournament.name,
+              },
+              public_tournament_id: tournament.id,
+              source: "registered_tournament",
+              tournament_id: tournament.id,
+            }
+          })
+
+      const combinedEvents = [
+        ...organizationEvents,
+        ...registeredTournamentEvents,
+      ].sort(
+        (a, b) =>
+          new Date(a.start_time).getTime() -
+          new Date(b.start_time).getTime()
+      )
+
       setOrganizationName(
         organizationResult.data?.name ?? "Organization"
       )
 
-      setEvents(
-        (eventsResult.data ?? []) as unknown as OrganizationEvent[]
-      )
-
+      setEvents(combinedEvents)
       setLoading(false)
     }
 
@@ -150,11 +286,20 @@ export function OrganizationSchedulePage() {
     const now = new Date()
 
     if (filter === "upcoming") {
-      return events.filter(
-        (event) =>
-          new Date(event.start_time) >= now &&
-          event.status === "scheduled"
-      )
+      return events.filter((event) => {
+        const eventEnd =
+          event.end_time ?? event.start_time
+
+        const isUpcoming =
+          new Date(eventEnd) >= now
+
+        const isVisibleStatus =
+          event.source === "registered_tournament"
+            ? ["pending", "approved", "waitlist"].includes(event.status)
+            : event.status === "scheduled"
+
+        return isUpcoming && isVisibleStatus
+      })
     }
 
     if (filter === "all") {
@@ -411,10 +556,12 @@ export function OrganizationSchedulePage() {
                           <div>
 
                             <p className="scoreboard-label text-scoreboard-amber">
-                              {event.event_type.replaceAll(
-                                "_",
-                                " "
-                              )}
+                              {event.source === "registered_tournament"
+                                ? "Registered Tournament"
+                                : event.event_type.replaceAll(
+                                    "_",
+                                    " "
+                                  )}
                             </p>
 
                             <div className="scoreboard-number mt-2 text-xl">
@@ -542,7 +689,12 @@ export function OrganizationSchedulePage() {
                             </span>
 
                             <Link
-  to={`/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`}
+  to={
+    event.source === "registered_tournament" &&
+    event.tournament_id
+      ? `/tournaments/${event.tournament_id}`
+      : `/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`
+  }
   className="
     inline-flex
     items-center
@@ -558,7 +710,9 @@ export function OrganizationSchedulePage() {
     hover:border-scoreboard-amber
   "
 >
-  Edit
+  {event.source === "registered_tournament"
+    ? "View Tournament"
+    : "Edit"}
 </Link>
 
                           </div>

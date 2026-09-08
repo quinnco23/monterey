@@ -93,7 +93,7 @@ export function CreateTeamPage() {
                   className="mt-2 w-full rounded-none border border-scoreboard-cream/30 bg-scoreboard-cream px-3 py-3 text-scoreboard-dark outline-none focus:border-scoreboard-amber"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="SC Waves"
+                  placeholder="Name"
                   required
                 />
               </label>

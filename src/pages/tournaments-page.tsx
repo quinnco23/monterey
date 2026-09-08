@@ -46,6 +46,8 @@ export function TournamentsPage() {
   const { user } = useAuth()
   const [tournaments, setTournaments] =
     useState<TournamentListing[]>([])
+    const [registeredTournamentIds, setRegisteredTournamentIds] =
+  useState<Set<string>>(new Set())
     
 
   const [loading, setLoading] =
@@ -146,6 +148,73 @@ export function TournamentsPage() {
             error: null,
           })
 
+
+          let registeredIds = new Set<string>()
+
+if (user) {
+  const { data: membershipData } =
+    await supabase
+      .from("organization_members")
+      .select(`
+        organization_id,
+        role,
+        status
+      `)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+
+  const organizationIds =
+    (membershipData ?? [])
+      .filter((membership) =>
+        ["manager", "owner", "admin"].includes(
+          membership.role
+        )
+      )
+      .map(
+        (membership) =>
+          membership.organization_id
+      )
+
+  if (organizationIds.length > 0) {
+    const { data: teamData } =
+      await supabase
+        .from("teams")
+        .select("id")
+        .in(
+          "organization_id",
+          organizationIds
+        )
+        .eq("status", "active")
+
+    const teamIds =
+      (teamData ?? []).map(
+        (team) => team.id
+      )
+
+    if (teamIds.length > 0) {
+      const { data: registrationData } =
+        await supabase
+          .from("tournament_teams")
+          .select(`
+            tournament_id,
+            team_id,
+            status
+          `)
+          .in("team_id", teamIds)
+
+      registeredIds =
+        new Set(
+          (registrationData ?? []).map(
+            (row) => row.tournament_id
+          )
+        )
+    }
+  }
+}
+
+setRegisteredTournamentIds(
+  registeredIds
+)
     const [
       tournamentResult,
       organizationTournamentResult,
@@ -402,6 +471,11 @@ export function TournamentsPage() {
               {tournaments.map(
                 (tournament) => {
 
+                  const isRegistered =
+  registeredTournamentIds.has(
+    tournament.id
+  )
+
                   const start =
                     new Date(
                       tournament
@@ -591,28 +665,52 @@ export function TournamentsPage() {
                               Tournament Details
                             </Link>
 
-                            <Link
-                              to={`/tournaments/${tournament.id}/register`}
-                              className="
-                                inline-flex
-                                min-h-11
-                                flex-1
-                                items-center
-                                justify-center
-                                bg-scoreboard-amber
-                                px-4
-                                text-xs
-                                font-black
-                                uppercase
-                                tracking-[0.12em]
-                                text-scoreboard-dark
-                                hover:bg-scoreboard-cream
-                              "
-                            >
-                              Register Team
-
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
+                            {isRegistered ? (
+  <Link
+    to="/dashboard/registrations/success"
+    className="
+      inline-flex
+      min-h-11
+      items-center
+      justify-center
+      border
+      border-scoreboard-amber
+      bg-scoreboard-dark
+      px-5
+      py-3
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-amber
+    "
+  >
+    Registered
+  </Link>
+) : (
+  <Link
+    to={`/tournaments/${tournament.id}/register`}
+    className="
+      inline-flex
+      min-h-11
+      items-center
+      justify-center
+      border
+      border-scoreboard-cream
+      bg-scoreboard-cream
+      px-5
+      py-3
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-amber
+    "
+  >
+    Register Team
+  </Link>
+)}
                           </>
                         ) : tournament.organizationId ? (
                           <Link

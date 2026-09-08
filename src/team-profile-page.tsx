@@ -46,6 +46,9 @@ type TeamEvent = {
     id: string
     name: string
   } | null
+
+  source?: "organization_event" | "registered_tournament"
+  tournament_id?: string
 }
 
 type TournamentEntry = {
@@ -163,60 +166,6 @@ if (tournamentResult.error) {
   setLoading(false)
   return
 }
-const {
-  data: allTournamentRows,
-  error: allTournamentRowsError,
-} =
-  await supabase
-    .from("tournament_teams")
-    .select(`
-      id,
-      team_id,
-      tournament_id,
-      division_id,
-      display_name,
-      status
-    `)
-
-console.log(
-  "CURRENT TEAM ID:",
-  teamId
-)
-
-console.table(
-  (allTournamentRows ?? []).map((row) => ({
-    id: row.id,
-    team_id: row.team_id,
-    tournament_id: row.tournament_id,
-    display_name: row.display_name,
-    status: row.status,
-    matchesCurrentTeam:
-      row.team_id === teamId,
-  }))
-)
-
-console.log(
-  "MATCHING TOURNAMENT ROWS:",
-  (allTournamentRows ?? []).filter(
-    (row) => row.team_id === teamId
-  )
-)
-
-console.log(
-  "ALL TOURNAMENT ROW ERROR:",
-  allTournamentRowsError
-)
-
-console.log(
-  "TOURNAMENT TEAM IDS:",
-  (allTournamentRows ?? []).map((row) => ({
-    team_id: row.team_id,
-    display_name: row.display_name,
-    status: row.status,
-  }))
-)
-
-
 const loadedTeam =
   teamResult.data as unknown as Team
 
@@ -301,12 +250,80 @@ if (scheduleError) {
 // SAVE EVERYTHING TO STATE
 setTeam(loadedTeam)
 
-setEvents(
-  (scheduleData ?? []) as unknown as TeamEvent[]
-)
+const scheduledEvents: TeamEvent[] =
+  ((scheduleData ?? []) as unknown as TeamEvent[]).map((event) => ({
+    ...event,
+    source: "organization_event",
+  }))
+
+const registeredTournamentEntries =
+  (tournamentResult.data ?? []) as unknown as TournamentEntry[]
+
+const registeredTournamentEvents: TeamEvent[] =
+  registeredTournamentEntries
+    .filter((entry) => entry.tournaments)
+    .map((entry) => {
+      const tournament = entry.tournaments!
+
+      return {
+        id: `tournament-${entry.id}`,
+
+        event_type: "tournament",
+
+        title: tournament.name,
+
+        start_time:
+          `${tournament.start_date}T12:00:00`,
+
+        end_time:
+          tournament.end_date
+            ? `${tournament.end_date}T12:00:00`
+            : null,
+
+        location_name:
+          [tournament.city, tournament.state]
+            .filter(Boolean)
+            .join(", ") || null,
+
+        opponent_name: null,
+
+        status: entry.status,
+
+        booking_resources: null,
+
+        public_tournament: {
+          id: tournament.id,
+          name: tournament.name,
+        },
+
+        source: "registered_tournament",
+        tournament_id: tournament.id,
+      }
+    })
+
+const combinedEvents = [
+  ...scheduledEvents,
+  ...registeredTournamentEvents,
+]
+  .filter((event) => {
+    const eventEnd =
+      event.end_time ?? event.start_time
+
+    return (
+      new Date(eventEnd).getTime() >=
+      Date.now()
+    )
+  })
+  .sort(
+    (a, b) =>
+      new Date(a.start_time).getTime() -
+      new Date(b.start_time).getTime()
+  )
+
+setEvents(combinedEvents)
 
 setTournaments(
-  (tournamentResult.data ?? []) as unknown as TournamentEntry[]
+  registeredTournamentEntries
 )
       /*
         For now, keep public roster names private.
@@ -324,10 +341,10 @@ setTournaments(
 
   const nextEvent = events[0] ?? null
 
-  const upcomingEvents = useMemo(
-    () => events.slice(1, 6),
-    [events]
-  )
+const upcomingEvents = useMemo(
+  () => events.slice(0, 6),
+  [events]
+)
 
   if (loading) {
     return (
@@ -420,7 +437,7 @@ setTournaments(
           {team.organizations && (
             <div className="mt-7 flex flex-wrap gap-3">
 
-              <Link
+              {/* <Link
                 to={`/organizations/${team.organizations.id}/schedule`}
                 className="
                   inline-flex
@@ -440,7 +457,7 @@ setTournaments(
                 "
               >
                 Organization Schedule
-              </Link>
+              </Link> */}
 
             </div>
           )}
@@ -735,32 +752,33 @@ function EventCard({
     event.booking_resources?.name ??
     event.location_name
 
-  return (
-    <article
-      className={
-        featured
-          ? `
-            border
-            border-scoreboard-amber/60
-            bg-scoreboard-green
-            p-6
-            sm:p-7
-          `
-          : `
-            border
-            border-scoreboard-cream/25
-            bg-scoreboard-green
-            p-5
-          `
-      }
-    >
+  const cardClassName =
+    featured
+      ? `
+          border
+          border-scoreboard-amber/60
+          bg-scoreboard-green
+          p-6
+          sm:p-7
+        `
+      : `
+          border
+          border-scoreboard-cream/25
+          bg-scoreboard-green
+          p-5
+        `
+
+  const cardContent = (
+    <>
 
       <div className="grid gap-5 sm:grid-cols-[150px_1fr]">
 
         <div>
 
           <p className="scoreboard-label text-scoreboard-amber">
-            {event.event_type.replaceAll("_", " ")}
+            {event.source === "registered_tournament"
+              ? "Registered Tournament"
+              : event.event_type.replaceAll("_", " ")}
           </p>
 
           <p className="scoreboard-number mt-2 text-xl">
@@ -823,14 +841,35 @@ function EventCard({
 
             <Clock className="h-3.5 w-3.5 text-scoreboard-amber" />
 
-            Scheduled
+            {event.source === "registered_tournament"
+              ? event.status.replaceAll("_", " ")
+              : "Scheduled"}
 
           </div>
 
         </div>
 
       </div>
+    </>
+  )
 
+  if (
+    event.source === "registered_tournament" &&
+    event.tournament_id
+  ) {
+    return (
+      <Link
+        to={`/tournaments/${event.tournament_id}`}
+        className={`block transition-colors hover:border-scoreboard-amber ${cardClassName}`}
+      >
+        {cardContent}
+      </Link>
+    )
+  }
+
+  return (
+    <article className={cardClassName}>
+      {cardContent}
     </article>
   )
 }

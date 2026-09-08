@@ -10,6 +10,7 @@ import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/features/auth/auth-context"
 
 type Tournament = {
   id: string
@@ -24,6 +25,11 @@ type Tournament = {
 }
 
 export function HomePage() {
+
+  const { user } = useAuth()
+
+  const [registeredTournamentIds, setRegisteredTournamentIds] =
+    useState<Set<string>>(new Set())
 
   const [tournaments, setTournaments] =
   useState<Tournament[]>([])
@@ -72,6 +78,88 @@ useEffect(() => {
       (data ?? []) as Tournament[]
     )
 
+    let registeredIds = new Set<string>()
+
+    if (user) {
+      const { data: membershipData, error: membershipError } =
+        await supabase
+          .from("organization_members")
+          .select(`
+            organization_id,
+            role,
+            status
+          `)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+
+      if (membershipError) {
+        console.error(
+          "Unable to load organization memberships:",
+          membershipError
+        )
+      } else {
+        const organizationIds =
+          (membershipData ?? [])
+            .filter((membership) =>
+              ["manager", "owner", "admin"].includes(
+                membership.role
+              )
+            )
+            .map(
+              (membership) =>
+                membership.organization_id
+            )
+
+        if (organizationIds.length > 0) {
+          const { data: teamData, error: teamError } =
+            await supabase
+              .from("teams")
+              .select("id")
+              .in("organization_id", organizationIds)
+              .eq("status", "active")
+
+          if (teamError) {
+            console.error(
+              "Unable to load teams for registration state:",
+              teamError
+            )
+          } else {
+            const teamIds =
+              (teamData ?? []).map((team) => team.id)
+
+            if (teamIds.length > 0) {
+              const {
+                data: registrationData,
+                error: registrationError,
+              } = await supabase
+                .from("tournament_teams")
+                .select(`
+                  tournament_id,
+                  team_id,
+                  status
+                `)
+                .in("team_id", teamIds)
+
+              if (registrationError) {
+                console.error(
+                  "Unable to load tournament registrations:",
+                  registrationError
+                )
+              } else {
+                registeredIds =
+                  new Set(
+                    (registrationData ?? []).map(
+                      (row) => row.tournament_id
+                    )
+                  )
+              }
+            }
+          }
+        }
+      }
+    }
+
+    setRegisteredTournamentIds(registeredIds)
     setTournamentsLoading(false)
   }
 
@@ -195,33 +283,55 @@ return (
 
             <div className="mt-9 flex flex-wrap gap-3">
 
-              <Link
-                to={`/tournaments/${featuredTournament.id}/register`}
-              >
-
-                <Button
-                  size="lg"
-                  className="
-                    rounded-none
-                    border
-                    border-scoreboard-cream
-                    bg-scoreboard-cream
-                    px-6
-                    font-bold
-                    uppercase
-                    tracking-[0.12em]
-                    text-scoreboard-dark
-                    hover:bg-scoreboard-amber
-                    hover:text-scoreboard-dark
-                  "
+              {registeredTournamentIds.has(featuredTournament.id) ? (
+                <Link
+                  to={`/tournaments/${featuredTournament.id}`}
                 >
-                  Register Team
-
-                  <ArrowRight className="ml-2 h-4 w-4" />
-
-                </Button>
-
-              </Link>
+                  <Button
+                    size="lg"
+                    className="
+                      rounded-none
+                      border
+                      border-scoreboard-amber
+                      bg-scoreboard-dark
+                      px-6
+                      font-bold
+                      uppercase
+                      tracking-[0.12em]
+                      text-scoreboard-amber
+                      hover:bg-scoreboard-light
+                      hover:text-scoreboard-cream
+                    "
+                  >
+                    Registered
+                    <ShieldCheck className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link
+                  to={`/tournaments/${featuredTournament.id}/register`}
+                >
+                  <Button
+                    size="lg"
+                    className="
+                      rounded-none
+                      border
+                      border-scoreboard-cream
+                      bg-scoreboard-cream
+                      px-6
+                      font-bold
+                      uppercase
+                      tracking-[0.12em]
+                      text-scoreboard-dark
+                      hover:bg-scoreboard-amber
+                      hover:text-scoreboard-dark
+                    "
+                  >
+                    Register Team
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
 
               <Link
                 to={`/tournaments/${featuredTournament.id}`}
@@ -444,28 +554,53 @@ return (
                   Tournament Details
                 </Link>
 
-                <Link
-                  to={`/tournaments/${tournament.id}/register`}
-                  className="
-                    inline-flex
-                    min-h-11
-                    flex-1
-                    items-center
-                    justify-center
-                    bg-scoreboard-amber
-                    px-4
-                    text-xs
-                    font-black
-                    uppercase
-                    tracking-[0.10em]
-                    text-scoreboard-dark
-                    hover:bg-scoreboard-cream
-                  "
-                >
-                  Register Team
-
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                {registeredTournamentIds.has(tournament.id) ? (
+                  <Link
+                    to={`/tournaments/${tournament.id}`}
+                    className="
+                      inline-flex
+                      min-h-11
+                      flex-1
+                      items-center
+                      justify-center
+                      border
+                      border-scoreboard-amber
+                      bg-scoreboard-dark
+                      px-4
+                      text-xs
+                      font-black
+                      uppercase
+                      tracking-[0.10em]
+                      text-scoreboard-amber
+                      hover:bg-scoreboard-light
+                    "
+                  >
+                    Registered
+                    <ShieldCheck className="ml-2 h-4 w-4" />
+                  </Link>
+                ) : (
+                  <Link
+                    to={`/tournaments/${tournament.id}/register`}
+                    className="
+                      inline-flex
+                      min-h-11
+                      flex-1
+                      items-center
+                      justify-center
+                      bg-scoreboard-amber
+                      px-4
+                      text-xs
+                      font-black
+                      uppercase
+                      tracking-[0.10em]
+                      text-scoreboard-dark
+                      hover:bg-scoreboard-cream
+                    "
+                  >
+                    Register Team
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                )}
 
               </div>
 

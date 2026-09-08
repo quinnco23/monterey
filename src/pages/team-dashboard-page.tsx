@@ -29,7 +29,7 @@ type Player = {
   id: string
   first_name: string
   last_name: string
-  age: number | null
+  graduation_year: number | null
 }
 
 type RosterMember = {
@@ -61,6 +61,8 @@ type TeamEvent = {
   location_name: string | null
   opponent_name: string | null
   status: string
+  source?: "organization_event" | "registered_tournament"
+  tournament_id?: string
 }
 
 type TeamTournamentRegistration = {
@@ -133,21 +135,23 @@ const [tournamentRegistrations, setTournamentRegistrations] =
       }
 
       const { data: rosterData, error: rosterError } = await supabase
-  .from("team_roster_members")
+  .from("team_players")
   .select(`
     id,
     jersey_number,
     primary_position,
     secondary_position,
     roster_status,
-    player:players!team_roster_members_player_id_fkey (
+
+    player:players!team_players_player_id_fkey (
       id,
       first_name,
       last_name,
-      age
+      graduation_year
     )
   `)
   .eq("team_id", teamId)
+  .eq("active", true)
   .eq("roster_status", "active")
 
 if (rosterError) {
@@ -244,17 +248,64 @@ setTeam(teamData)
 
 setRoster(normalizedRoster)
 
-setEvents(
-  (eventData ?? []) as TeamEvent[]
-)
+const scheduledEvents: TeamEvent[] =
+  ((eventData ?? []) as TeamEvent[]).map((event) => ({
+    ...event,
+    source: "organization_event",
+  }))
+
+const registeredTournamentEntries =
+  (tournamentData ?? []) as unknown as TeamTournamentRegistration[]
+
+const registeredTournamentEvents: TeamEvent[] =
+  registeredTournamentEntries
+    .filter((entry) => entry.tournaments)
+    .map((entry) => {
+      const tournament = entry.tournaments!
+
+      return {
+        id: `registration-${entry.id}`,
+        event_type: "tournament",
+        title: tournament.name,
+        start_time: `${tournament.start_date}T12:00:00`,
+        end_time: tournament.end_date
+          ? `${tournament.end_date}T12:00:00`
+          : null,
+        location_name:
+          [tournament.city, tournament.state]
+            .filter(Boolean)
+            .join(", ") || null,
+        opponent_name: null,
+        status: entry.status,
+        source: "registered_tournament",
+        tournament_id: tournament.id,
+      }
+    })
+
+const combinedEvents = [
+  ...scheduledEvents,
+  ...registeredTournamentEvents,
+]
+  .filter((event) => {
+    const eventEnd =
+      event.end_time ?? event.start_time
+
+    return new Date(eventEnd).getTime() >= Date.now()
+  })
+  .sort(
+    (a, b) =>
+      new Date(a.start_time).getTime() -
+      new Date(b.start_time).getTime()
+  )
+  .slice(0, 5)
+
+setEvents(combinedEvents)
 
 setTournamentRegistrations(
-  (tournamentData ?? []) as unknown as TeamTournamentRegistration[]
+  registeredTournamentEntries
 )
 
 setLoading(false)
-      console.log("RAW ROSTER DATA:", rosterData)
-console.log("ROSTER ERROR:", rosterError)
     }
 
     void loadTeam()
@@ -507,16 +558,14 @@ console.log("ROSTER ERROR:", rosterError)
     {member.player?.last_name ?? "Player"}
   </p>
 
-  {member.player?.age && (
-    <p className="mt-1 text-xs text-scoreboard-muted">
-      Class of {member.player.age}
-    </p>
-  )}
+  {member.player?.graduation_year && (
+  <p className="mt-1 text-xs text-scoreboard-muted">
+    Class of {member.player.graduation_year}
+  </p>
+)}
 </div>
 
-      <span className="scoreboard-number text-right">
-        {member.primary_position || "UTIL"}
-      </span>
+    
 
       <span className="scoreboard-number text-right transition-colors group-hover:text-scoreboard-amber">
   {member.primary_position || "UTIL"}
@@ -569,7 +618,12 @@ console.log("ROSTER ERROR:", rosterError)
           return (
             <Link
               key={event.id}
-              to={`/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`}
+              to={
+                event.source === "registered_tournament" &&
+                event.tournament_id
+                  ? `/tournaments/${event.tournament_id}`
+                  : `/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`
+              }
               className="
                 group
                 block
@@ -584,7 +638,9 @@ console.log("ROSTER ERROR:", rosterError)
                 <div className="min-w-0">
 
                   <p className="scoreboard-label text-scoreboard-amber">
-                    {event.event_type.replaceAll("_", " ")}
+                    {event.source === "registered_tournament"
+                      ? "Registered Tournament"
+                      : event.event_type.replaceAll("_", " ")}
                   </p>
 
                   <p className="
@@ -615,6 +671,12 @@ console.log("ROSTER ERROR:", rosterError)
                   {event.location_name && (
                     <p className="mt-1 text-xs text-scoreboard-muted">
                       {event.location_name}
+                    </p>
+                  )}
+
+                  {event.source === "registered_tournament" && (
+                    <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-scoreboard-amber">
+                      {event.status.replaceAll("_", " ")}
                     </p>
                   )}
 

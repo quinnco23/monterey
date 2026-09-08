@@ -23,9 +23,9 @@ type Tournament = {
 
 type Division = {
   id: string
-  tournament_id: string
   name: string
-  age_group: string | null
+  age_group: string
+  registration_fee_cents: number
 }
 
 type Team = {
@@ -61,6 +61,18 @@ export function TournamentRegistrationPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [insuranceProvider, setInsuranceProvider] = useState("")
+const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("")
+const [insuranceExpiration, setInsuranceExpiration] = useState("")
+
+const [insuranceAttested, setInsuranceAttested] = useState(false)
+const [termsAccepted, setTermsAccepted] = useState(false)
+const [waiverAccepted, setWaiverAccepted] = useState(false)
+const [eligibilityAttested, setEligibilityAttested] = useState(false)
+
+  
+
+  
 
   useEffect(() => {
     async function loadPage() {
@@ -98,7 +110,9 @@ export function TournamentRegistrationPage() {
             id,
             tournament_id,
             name,
-            age_group
+            age_group,
+            registration_fee_cents
+            
           `)
           .eq("tournament_id", tournamentId)
           .order("age_group"),
@@ -213,6 +227,12 @@ export function TournamentRegistrationPage() {
     [teams, teamId]
   )
 
+  const selectedDivision = useMemo(
+    () =>
+      divisions.find((division) => division.id === divisionId) ?? null,
+    [divisions, divisionId]
+  )
+
   const compatibleDivisions = useMemo(() => {
     if (!selectedTeam?.age_group) {
       return divisions
@@ -257,43 +277,53 @@ export function TournamentRegistrationPage() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
-
-    if (!tournamentId || !user) {
-      setError("Missing tournament or user.")
+  
+    if (
+      !tournamentId ||
+      !user ||
+      !selectedTeam ||
+      !selectedDivision
+    ) {
+      setError("Select a team and division.")
       return
     }
 
-    if (!selectedTeam) {
-      setError("Select a team.")
+    if (
+      !insuranceAttested ||
+      !eligibilityAttested ||
+      !termsAccepted ||
+      !waiverAccepted
+    ) {
+      setError(
+        "Please complete all insurance, eligibility, and agreement confirmations."
+      )
       return
     }
-
-    if (!divisionId) {
-      setError("Select a tournament division.")
-      return
-    }
-
+  
     setSaving(true)
     setError("")
-
-    const { data: existingRegistration, error: lookupError } =
-      await supabase
-        .from("tournament_teams")
-        .select(`
-          id,
-          status
-        `)
-        .eq("tournament_id", tournamentId)
-        .eq("division_id", divisionId)
-        .eq("team_id", selectedTeam.id)
-        .maybeSingle()
-
+  
+    // Check for an existing tournament entry
+    const {
+      data: existingRegistration,
+      error: lookupError,
+    } = await supabase
+      .from("tournament_teams")
+      .select(`
+        id,
+        status
+      `)
+      .eq("tournament_id", tournamentId)
+      .eq("division_id", selectedDivision.id)
+      .eq("team_id", selectedTeam.id)
+      .maybeSingle()
+  
     if (lookupError) {
       setSaving(false)
       setError(lookupError.message)
       return
     }
-
+  
     if (existingRegistration) {
       setSaving(false)
       setError(
@@ -301,47 +331,108 @@ export function TournamentRegistrationPage() {
       )
       return
     }
-
-    const { error: insertError } =
-      await supabase
-        .from("tournament_teams")
-        .insert({
-          tournament_id: tournamentId,
-          division_id: divisionId,
-          team_id: selectedTeam.id,
-
-          display_name: selectedTeam.name,
-
-          city:
-            selectedTeam.city ?? null,
-
-          state:
-            selectedTeam.state ?? null,
-
-          status: "pending",
-
-          notes:
-            notes.trim() || null,
-        })
-
-    setSaving(false)
-
-    if (insertError) {
-      setError(insertError.message)
+  
+    const now = new Date().toISOString()
+  
+    // 1. Create the registration/payment record
+    const {
+      data: registration,
+      error: registrationError,
+    } = await supabase
+      .from("tournament_registrations")
+      .insert({
+        tournament_id: tournamentId,
+        division_id: selectedDivision.id,
+        team_id: selectedTeam.id,
+        organization_id: selectedTeam.organization_id,
+        registered_by_user_id: user.id,
+      
+        status: "submitted",
+      
+        // FAKE PAYMENT FOR NOW
+        payment_status: "paid",
+        registration_fee_cents:
+          selectedDivision.registration_fee_cents,
+      
+        // INSURANCE
+        insurance_provider:
+          insuranceProvider.trim() || null,
+      
+        insurance_policy_number:
+          insurancePolicyNumber.trim() || null,
+      
+        insurance_expiration:
+          insuranceExpiration || null,
+      
+        insurance_attested: true,
+        insurance_attested_at: now,
+      
+        // PLAYER ELIGIBILITY
+        eligibility_attested: true,
+        eligibility_attested_at: now,
+      
+        // AGREEMENTS
+        terms_accepted: true,
+        terms_accepted_at: now,
+      
+        waiver_accepted: true,
+        waiver_accepted_at: now,
+      
+        // REGISTRATION / PAYMENT TIMES
+        submitted_at: now,
+        paid_at: now,
+      })
+      .select("id")
+      .single()
+  
+    if (registrationError) {
+      setSaving(false)
+      setError(registrationError.message)
       return
     }
-
+  
+    // 2. Create the actual tournament participant
+    const { error: teamEntryError } = await supabase
+      .from("tournament_teams")
+      .insert({
+        tournament_id: tournamentId,
+        division_id: selectedDivision.id,
+        team_id: selectedTeam.id,
+        display_name: selectedTeam.name,
+  
+        city: selectedTeam.city ?? null,
+        state: selectedTeam.state ?? null,
+  
+        status: "pending",
+        notes: notes.trim() || null,
+  
+        registration_id: registration.id,
+      })
+  
+    if (teamEntryError) {
+      setSaving(false)
+      setError(teamEntryError.message)
+      return
+    }
+  
+    setSaving(false)
+  
+    // 3. Registration complete
     navigate(
-  "/dashboard/registrations/success",
-  {
-    replace: true,
-    state: {
-      tournamentId,
-      teamId: selectedTeam.id,
-      divisionId,
-    },
-  }
-)
+      "/dashboard/registrations/success",
+      {
+        replace: true,
+        state: {
+          registrationId: registration.id,
+          tournamentId,
+          teamId: selectedTeam.id,
+          divisionId: selectedDivision.id,
+          paymentStatus: "paid",
+          registrationFeeCents:
+            selectedDivision.registration_fee_cents,
+        },
+      }
+    )
   }
 
   if (loading) {
@@ -455,7 +546,7 @@ export function TournamentRegistrationPage() {
             <div className="border-b border-scoreboard-cream/20 pb-5">
 
               <p className="scoreboard-label text-scoreboard-amber">
-                Register Team
+                Tournament Registration
               </p>
 
               <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.05em]">
@@ -650,6 +741,191 @@ export function TournamentRegistrationPage() {
 
             <div className="mt-8 border-t border-scoreboard-cream/20 pt-6">
 
+            {selectedDivision && (
+  <div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
+
+    <p className="scoreboard-label text-scoreboard-amber">
+      Registration Fee
+    </p>
+
+    <div className="mt-4 flex items-end justify-between gap-4">
+
+      <div>
+        <p className="text-sm text-scoreboard-muted">
+          {selectedDivision.age_group}{" "}
+          {selectedDivision.name}
+        </p>
+      </div>
+
+      <div className="scoreboard-number text-3xl text-scoreboard-cream">
+        $
+        {(
+          selectedDivision.registration_fee_cents /
+          100
+        ).toFixed(2)}
+      </div>
+
+    </div>
+
+    <p className="mt-4 text-xs uppercase tracking-[0.08em] text-scoreboard-muted">
+      Test payment mode — no card will be charged.
+    </p>
+
+   
+
+
+  </div>
+
+  
+)}
+
+<div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
+
+<p className="scoreboard-label text-scoreboard-amber">
+  Insurance & Eligibility
+</p>
+
+<div className="mt-5 grid gap-4 sm:grid-cols-2">
+
+  <label className="block">
+    <span className="scoreboard-label text-scoreboard-cream">
+      Insurance Provider
+    </span>
+
+    <input
+      value={insuranceProvider}
+      onChange={(e) => setInsuranceProvider(e.target.value)}
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-scoreboard-dark
+      "
+    />
+  </label>
+
+  <label className="block">
+    <span className="scoreboard-label text-scoreboard-cream">
+      Policy Number
+    </span>
+
+    <input
+      value={insurancePolicyNumber}
+      onChange={(e) => setInsurancePolicyNumber(e.target.value)}
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-scoreboard-dark
+      "
+    />
+  </label>
+
+  <label className="block sm:col-span-2">
+    <span className="scoreboard-label text-scoreboard-cream">
+      Policy Expiration
+    </span>
+
+    <input
+      type="date"
+      value={insuranceExpiration}
+      onChange={(e) => setInsuranceExpiration(e.target.value)}
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-scoreboard-dark
+      "
+    />
+  </label>
+
+</div>
+
+<div className="mt-6 space-y-4">
+
+  <label className="flex items-start gap-3">
+    <input
+      type="checkbox"
+      checked={insuranceAttested}
+      onChange={(e) => setInsuranceAttested(e.target.checked)}
+      className="mt-1"
+    />
+
+    <span className="text-sm text-scoreboard-muted">
+      I certify that this team has current insurance coverage for tournament participation.
+    </span>
+  </label>
+
+  <label className="flex items-start gap-3">
+    <input
+      type="checkbox"
+      checked={eligibilityAttested}
+      onChange={(e) => setEligibilityAttested(e.target.checked)}
+      className="mt-1"
+    />
+
+    <span className="text-sm text-scoreboard-muted">
+      I certify that all players meet the eligibility requirements for this division.
+    </span>
+  </label>
+
+</div>
+
+</div>
+
+<div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
+
+<p className="scoreboard-label text-scoreboard-amber">
+  Agreements
+</p>
+
+<div className="mt-5 space-y-4">
+
+  <label className="flex items-start gap-3">
+    <input
+      type="checkbox"
+      checked={termsAccepted}
+      onChange={(e) => setTermsAccepted(e.target.checked)}
+      className="mt-1"
+    />
+
+    <span className="text-sm text-scoreboard-muted">
+      I agree to the tournament Terms of Service.
+    </span>
+  </label>
+
+  <label className="flex items-start gap-3">
+    <input
+      type="checkbox"
+      checked={waiverAccepted}
+      onChange={(e) => setWaiverAccepted(e.target.checked)}
+      className="mt-1"
+    />
+
+    <span className="text-sm text-scoreboard-muted">
+      I accept the tournament liability waiver and participation rules.
+    </span>
+  </label>
+
+</div>
+
+</div>
+
               <Button
                 type="submit"
                 disabled={
@@ -669,9 +945,11 @@ export function TournamentRegistrationPage() {
                 "
               >
                 {saving
-                  ? "Submitting Registration..."
-                  : "Submit Registration"}
+                  ? "Processing..."
+                  : "Pay & Register"}
               </Button>
+
+
 
               <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-[0.10em] text-scoreboard-muted">
                 Registration will be submitted for approval

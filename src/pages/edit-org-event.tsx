@@ -1551,7 +1551,7 @@ updated_at:
                       e.target.value
                     )
                   }
-                  placeholder="SC Waves 10U"
+                  placeholder="name 10U"
                   className="
                     mt-2
                     w-full

@@ -42,21 +42,25 @@ import {
   }
 
   type OrganizationEvent = {
-  id: string
-  team_id: string | null
-  event_type: string
-  title: string
-  start_time: string
-  end_time: string | null
-  location_name: string | null
-  status: string
-
-  teams: {
     id: string
-    name: string
-    age_group: string | null
-  } | null
-}
+    team_id: string | null
+    event_type: string
+    title: string
+    start_time: string
+    end_time: string | null
+    location_name: string | null
+    status: string
+  
+    public_tournament_id?: string | null
+    tournament_id?: string
+    source?: "organization_event" | "registered_tournament"
+  
+    teams: {
+      id: string
+      name: string
+      age_group: string | null
+    } | null
+  }
   
   export function OrganizationDashboardPage() {
     const { organizationId } = useParams()
@@ -152,6 +156,7 @@ import {
           end_time,
           location_name,
           status,
+           public_tournament_id,
 
           teams (
             id,
@@ -209,15 +214,170 @@ import {
       return
     }
 
-    const upcomingEvents =
-  (eventsResult.data ?? []) as unknown as OrganizationEvent[]
+    const teamIds =
+  (teamsResult.data ?? []).map(
+    (team) => team.id
+  )
 
-    const scheduledTournaments =
-      upcomingEvents.filter(
-        (event) =>
-          event.event_type ===
-          "tournament"
-      )
+const {
+  data: registeredTournamentData,
+  error: registeredTournamentError,
+} =
+  teamIds.length > 0
+    ? await supabase
+        .from("tournament_teams")
+        .select(`
+          id,
+          team_id,
+          status,
+
+          teams (
+            id,
+            name,
+            age_group
+          ),
+
+          tournaments (
+            id,
+            name,
+            start_date,
+            end_date,
+            city,
+            state,
+            status
+          )
+        `)
+        .in("team_id", teamIds)
+        .in("status", [
+          "pending",
+          "approved",
+          "waitlist",
+        ])
+    : {
+        data: [],
+        error: null,
+      }
+
+if (registeredTournamentError) {
+  setError(
+    registeredTournamentError.message
+  )
+  setLoading(false)
+  return
+}
+
+const organizationEvents: OrganizationEvent[] =
+(
+  eventsResult.data ?? []
+).map((event: any) => ({
+  ...event,
+  source: "organization_event",
+}))
+
+const alreadyScheduledTournamentIds =
+new Set(
+  organizationEvents
+    .map(
+      (event) =>
+        event.public_tournament_id
+    )
+    .filter(Boolean)
+)
+
+const registeredTournamentEvents: OrganizationEvent[] =
+(
+  registeredTournamentData ?? []
+)
+  .filter((entry: any) => {
+    const tournament =
+      entry.tournaments
+
+    if (!tournament) {
+      return false
+    }
+
+    // Prevent duplicate cards when this tournament
+    // already exists as an organization event.
+    return !alreadyScheduledTournamentIds.has(
+      tournament.id
+    )
+  })
+  .map((entry: any) => {
+    const tournament =
+      entry.tournaments
+
+    return {
+      id: `registration-${entry.id}`,
+
+      team_id:
+        entry.team_id,
+
+      event_type:
+        "tournament",
+
+      title:
+        tournament.name,
+
+      start_time:
+        `${tournament.start_date}T12:00:00`,
+
+      end_time:
+        tournament.end_date
+          ? `${tournament.end_date}T12:00:00`
+          : null,
+
+      location_name:
+        [
+          tournament.city,
+          tournament.state,
+        ]
+          .filter(Boolean)
+          .join(", ") || null,
+
+      status:
+        entry.status,
+
+      teams:
+        entry.teams ?? null,
+
+      tournament_id:
+        tournament.id,
+
+      source:
+        "registered_tournament",
+    }
+  })
+
+const upcomingEvents = [
+...organizationEvents,
+...registeredTournamentEvents,
+]
+.filter((event) => {
+  const ending =
+    event.end_time ??
+    event.start_time
+
+  return (
+    new Date(ending).getTime() >=
+    Date.now()
+  )
+})
+.sort(
+  (a, b) =>
+    new Date(
+      a.start_time
+    ).getTime() -
+    new Date(
+      b.start_time
+    ).getTime()
+)
+
+const scheduledTournaments =
+upcomingEvents.filter(
+  (event) =>
+    event.event_type ===
+    "tournament"
+)
 
     setOrganization(
       organizationResult.data
@@ -488,6 +648,37 @@ const upcomingSchedule =
       <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
         Teams
       </h2>
+
+      <Link
+  to={`/dashboard/organizations/${organization.id}/players`}
+  className="
+    block
+    border
+    border-scoreboard-cream/20
+    bg-scoreboard-green
+    p-5
+  "
+>
+  <div className="scoreboard-label">
+    Organization
+  </div>
+
+  <div className="mt-2 flex items-end justify-between">
+    <div>
+      <h2 className="text-xl font-bold text-scoreboard-cream">
+        Player Pool
+      </h2>
+
+      <p className="mt-1 text-sm text-scoreboard-muted">
+        Manage players and build team rosters
+      </p>
+    </div>
+
+    <span className="text-scoreboard-amber">
+      View →
+    </span>
+  </div>
+</Link>
     </div>
 
     <Link
@@ -746,7 +937,13 @@ const upcomingSchedule =
         return (
           <Link
             key={event.id}
-            to={`/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`}
+            to={
+              event.source ===
+                "registered_tournament" &&
+              event.tournament_id
+                ? `/tournaments/${event.tournament_id}`
+                : `/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`
+            }
             className="
               group
               flex
@@ -765,7 +962,9 @@ const upcomingSchedule =
               <div className="flex flex-wrap items-center gap-2">
 
                 <span className="scoreboard-label text-scoreboard-amber">
-                  {event.event_type}
+                {event.source === "registered_tournament"
+  ? "Registered Tournament"
+  : event.event_type.replaceAll("_", " ")}
                 </span>
 
                 {event.teams && (
