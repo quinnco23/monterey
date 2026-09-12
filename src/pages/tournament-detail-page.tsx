@@ -5,7 +5,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react"
-import { useParams } from "react-router-dom"
+import { useParams, Link } from "react-router-dom"
 
 import { supabase } from "@/lib/supabase"
 
@@ -14,6 +14,7 @@ type Tournament = {
   name: string
   slug: string
   description: string | null
+  location_name: string | null
   city: string | null
   state: string | null
   start_date: string
@@ -115,20 +116,28 @@ export function TournamentDetailPage() {
         gamesResult,
       ] = await Promise.all([
         supabase
-          .from("tournaments")
-          .select(`
-            id,
-            name,
-            slug,
-            description,
-            city,
-            state,
-            start_date,
-            end_date,
-            status
-          `)
-          .eq("id", tournamentId)
-          .single(),
+  .from("tournaments")
+  .select(`
+    id,
+    name,
+    slug,
+    description,
+    location_name,
+    city,
+    state,
+    start_date,
+    end_date,
+    status
+  `)
+  .eq("id", tournamentId)
+  .in("status", [
+    "registration_open",
+    "registration_closed",
+    "scheduled",
+    "in_progress",
+    "completed",
+  ])
+  .maybeSingle(),
 
         supabase
           .from("tournament_divisions")
@@ -289,6 +298,17 @@ export function TournamentDetailPage() {
     `${tournament.end_date}T12:00:00`
   )
 
+  const mapLocation = [
+    tournament.location_name,
+    tournament.city,
+    tournament.state,
+  ]
+    .filter(Boolean)
+    .join(", ")
+  
+  const encodedMapLocation =
+    encodeURIComponent(mapLocation)
+
   return (
     <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
 
@@ -338,9 +358,34 @@ export function TournamentDetailPage() {
 
                     <MapPin className="h-4 w-4 text-scoreboard-amber" />
 
-                    {[tournament.city, tournament.state]
-                      .filter(Boolean)
-                      .join(", ")}
+                    {(
+  tournament.location_name ||
+  tournament.city ||
+  tournament.state
+) && (
+  <div className="flex items-start gap-2">
+    <MapPin className="mt-0.5 h-4 w-4 text-scoreboard-amber" />
+
+    <div>
+      {tournament.location_name && (
+        <div className="font-bold text-scoreboard-cream">
+          {tournament.location_name}
+        </div>
+      )}
+
+      {(tournament.city || tournament.state) && (
+        <div className="text-scoreboard-muted">
+          {[
+            tournament.city,
+            tournament.state,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
                   </div>
                 )}
@@ -358,10 +403,37 @@ export function TournamentDetailPage() {
               <p className="scoreboard-number mt-2 text-xl text-scoreboard-amber">
                 {tournament.status.replaceAll("_", " ")}
               </p>
-
+              {tournament.status === "registration_open" && (
+  <Link
+    to={`/tournaments/${tournament.id}/register`}
+    className="
+      mt-3
+      flex
+      min-h-12
+      items-center
+      justify-center
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-6
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.14em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-cream
+    "
+  >
+    Register Team
+  </Link>
+)}
             </div>
 
+            
+
           </div>
+
+          
         </div>
       </section>
 
@@ -461,6 +533,7 @@ export function TournamentDetailPage() {
 
         {/* OVERVIEW */}
         {activeTab === "overview" && (
+          <>
           <div className="grid gap-6 lg:grid-cols-3">
 
             <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
@@ -523,10 +596,99 @@ export function TournamentDetailPage() {
               <p className="mt-4 text-sm text-scoreboard-muted">
                 Scheduled tournament games.
               </p>
+              
 
             </div>
 
+            
           </div>
+          <div>
+
+{mapLocation && (
+  <div className="mt-6 border border-scoreboard-cream/25 bg-scoreboard-green">
+    <div className="grid lg:grid-cols-[240px_1fr]">
+
+      {/* COMPACT LOCATION INFO */}
+      <div className="p-4">
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-scoreboard-amber" />
+
+          <p className="scoreboard-label text-scoreboard-amber">
+            Location
+          </p>
+        </div>
+
+        {tournament.location_name && (
+          <h3 className="mt-3 text-base font-black uppercase tracking-[0.04em]">
+            {tournament.location_name}
+          </h3>
+        )}
+
+        {(tournament.city || tournament.state) && (
+          <p className="mt-1 text-xs text-scoreboard-muted">
+            {[
+              tournament.city,
+              tournament.state,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
+        )}
+
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodedMapLocation}`}
+          target="_blank"
+          rel="noreferrer"
+          className="
+            mt-4
+            inline-flex
+            min-h-9
+            items-center
+            justify-center
+            border
+            border-scoreboard-amber
+            px-3
+            py-2
+            text-[10px]
+            font-black
+            uppercase
+            tracking-[0.12em]
+            text-scoreboard-amber
+            hover:bg-scoreboard-amber
+            hover:text-scoreboard-dark
+          "
+        >
+          Get Directions
+        </a>
+      </div>
+
+      {/* GOOGLE MAP */}
+      <div className="
+        min-h-[240px]
+        border-t
+        border-scoreboard-cream/20
+        lg:min-h-[280px]
+        lg:border-l
+        lg:border-t-0
+      ">
+        <iframe
+          title={`${tournament.name} location`}
+          src={`https://www.google.com/maps?q=${encodedMapLocation}&output=embed`}
+          width="100%"
+          height="100%"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="h-full min-h-[240px] w-full border-0 lg:min-h-[280px]"
+        />
+      </div>
+
+    </div>
+  </div>
+)}
+
+          </div>
+
+          </>
         )}
 
         {/* SCHEDULE */}

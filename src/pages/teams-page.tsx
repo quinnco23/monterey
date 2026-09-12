@@ -25,7 +25,7 @@ type Team = {
     name: string
   } | null
 
-  team_roster_members: {
+  team_players: {
     id: string
   }[]
 }
@@ -52,12 +52,19 @@ export function TeamsPage() {
     city,
     state,
     status,
+
     organizations (
       id,
       name
+    ),
+
+    team_players (
+      id
     )
   `)
   .eq("status", "active")
+  .eq("team_players.active", true)
+  .eq("team_players.roster_status", "active")
   .order("age_group")
   .order("name")
 
@@ -161,7 +168,7 @@ export function TeamsPage() {
 
             {teams.map((team) => {
               const rosterCount =
-                team.team_roster_members?.length ?? 0
+              team.team_players?.length ?? 0
 
               return (
                 <article

@@ -166,7 +166,7 @@ if (user) {
   const organizationIds =
     (membershipData ?? [])
       .filter((membership) =>
-        ["manager", "owner", "admin"].includes(
+        ["team_manager", "owner", "admin"].includes(
           membership.role
         )
       )
@@ -279,8 +279,8 @@ setRegisteredTournamentIds(
           status:
             tournament.status,
 
-          registerable:
-            true,
+            registerable:
+            tournament.status === "registration_open",
         })
       )
 

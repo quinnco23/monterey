@@ -268,9 +268,34 @@ setPublicTournamentId(
   existingPublicTournamentId
 )
 
-setPubliclyRegisterable(
-  Boolean(existingPublicTournamentId)
-)
+
+
+if (existingPublicTournamentId) {
+  const {
+    data: linkedTournament,
+    error: linkedTournamentError,
+  } = await supabase
+    .from("tournaments")
+    .select(`
+      id,
+      status
+    `)
+    .eq("id", existingPublicTournamentId)
+    .maybeSingle()
+
+  if (linkedTournamentError) {
+    setError(linkedTournamentError.message)
+    setLoading(false)
+    return
+  }
+
+  setPubliclyRegisterable(
+    linkedTournament?.status ===
+      "registration_open"
+  )
+} else {
+  setPubliclyRegisterable(false)
+}
 
 // LOAD TOURNAMENT DIVISIONS
 
@@ -490,95 +515,206 @@ setDivisions(
     setSaving(true)
     setError("")
 
-   let nextPublicTournamentId =
-  publicTournamentId
-
-if (
-  eventType === "tournament" &&
-  publiclyRegisterable
-) {
-  // CREATE PUBLIC TOURNAMENT
-  if (!publicTournamentId) {
-    const {
-      data,
-      error: tournamentError,
-    } =
-      await supabase
+    let nextPublicTournamentId =
+    publicTournamentId
+  
+  if (eventType === "tournament") {
+    const tournamentSlug =
+      toSlug(title)
+  
+    // --------------------------------
+    // NO LINKED PUBLIC TOURNAMENT YET
+    // --------------------------------
+  
+    if (
+      publiclyRegisterable &&
+      !publicTournamentId
+    ) {
+      // First check whether a tournament
+      // with this slug already exists.
+      const {
+        data: existingTournament,
+        error: lookupError,
+      } = await supabase
         .from("tournaments")
-        .insert({
-          organization_id:
-            organizationId,
-
-          created_by_user_id:
-            user.id,
-
-          name:
-            title.trim(),
-
-          slug:
-            toSlug(title),
-
-          description:
-            description.trim() || null,
-
-          start_date:
-            eventDate,
-
-          end_date:
-            endDate,
-
-          status:
-            "registration_open",
-        })
-        .select("id")
-        .single()
-
-    if (tournamentError) {
-      setSaving(false)
-      setError(
-        tournamentError.message
-      )
-      return
+        .select(`
+          id,
+          status
+        `)
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq(
+          "slug",
+          tournamentSlug
+        )
+        .maybeSingle()
+  
+      if (lookupError) {
+        setSaving(false)
+        setError(
+          lookupError.message
+        )
+        return
+      }
+  
+      // --------------------------------
+      // EXISTING TOURNAMENT FOUND
+      // Reconnect and republish it
+      // --------------------------------
+  
+      if (existingTournament) {
+        nextPublicTournamentId =
+          existingTournament.id
+  
+        const {
+          error: restoreError,
+        } = await supabase
+          .from("tournaments")
+          .update({
+            name:
+              title.trim(),
+  
+            description:
+              description.trim() || null,
+  
+            location_name:
+              resourceId
+                ? selectedResource?.name ?? null
+                : locationName.trim() || null,
+  
+            start_date:
+              eventDate,
+  
+            end_date:
+              endDate,
+  
+            status:
+              "registration_open",
+          })
+          .eq(
+            "id",
+            existingTournament.id
+          )
+  
+        if (restoreError) {
+          setSaving(false)
+          setError(
+            restoreError.message
+          )
+          return
+        }
+      }
+  
+      // --------------------------------
+      // NO EXISTING TOURNAMENT
+      // Create a new one
+      // --------------------------------
+  
+      else {
+        const {
+          data,
+          error: tournamentError,
+        } = await supabase
+          .from("tournaments")
+          .insert({
+            organization_id:
+              organizationId,
+  
+            created_by_user_id:
+              user.id,
+  
+            name:
+              title.trim(),
+  
+            slug:
+              tournamentSlug,
+  
+            description:
+              description.trim() || null,
+  
+            location_name:
+              resourceId
+                ? selectedResource?.name ?? null
+                : locationName.trim() || null,
+  
+            start_date:
+              eventDate,
+  
+            end_date:
+              endDate,
+  
+            status:
+              "registration_open",
+          })
+          .select("id")
+          .single()
+  
+        if (tournamentError) {
+          setSaving(false)
+          setError(
+            tournamentError.message
+          )
+          return
+        }
+  
+        nextPublicTournamentId =
+          data.id
+      }
     }
-
-    nextPublicTournamentId =
-      data.id
-  }
-
-  // UPDATE EXISTING PUBLIC TOURNAMENT
-  else {
-    const {
-      error: tournamentUpdateError,
-    } =
-      await supabase
+  
+    // --------------------------------
+    // LINKED TOURNAMENT ALREADY EXISTS
+    // Update it whether registration
+    // is ON or OFF.
+    // --------------------------------
+  
+    if (publicTournamentId) {
+      const {
+        error: tournamentUpdateError,
+      } = await supabase
         .from("tournaments")
         .update({
           name:
             title.trim(),
-
+  
           description:
             description.trim() || null,
-
+  
+          location_name:
+            resourceId
+              ? selectedResource?.name ?? null
+              : locationName.trim() || null,
+  
           start_date:
             eventDate,
-
+  
           end_date:
             endDate,
+  
+          status:
+            publiclyRegisterable
+              ? "registration_open"
+              : "draft",
         })
         .eq(
           "id",
           publicTournamentId
         )
-
-    if (tournamentUpdateError) {
-      setSaving(false)
-      setError(
-        tournamentUpdateError.message
-      )
-      return
+  
+      if (tournamentUpdateError) {
+        setSaving(false)
+        setError(
+          tournamentUpdateError.message
+        )
+        return
+      }
+  
+      nextPublicTournamentId =
+        publicTournamentId
     }
   }
-}
 
 /* SAVE TOURNAMENT DIVISIONS */
 
@@ -684,11 +820,10 @@ if (
 
          status,
 
-public_tournament_id:
-  eventType === "tournament" &&
-  publiclyRegisterable
-    ? nextPublicTournamentId
-    : null,
+         public_tournament_id:
+         eventType === "tournament"
+           ? nextPublicTournamentId
+           : null,
 
 updated_at:
   new Date().toISOString(),

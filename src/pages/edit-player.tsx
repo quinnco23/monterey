@@ -141,19 +141,20 @@ export function EditPlayerPage() {
       return
     }
 
-   const {
-  data: updatedRoster,
-  error: rosterError,
-} = await supabase
-  .from("team_roster_members")
-  .update({
-    jersey_number: jerseyNumber || null,
-    primary_position: primaryPosition || null,
-    secondary_position: secondaryPosition || null,
-  })
-  .eq("team_id", teamId)
-  .eq("player_id", playerId)
-  .select()
+    const {
+      data: updatedRoster,
+      error: rosterError,
+    } = await supabase
+      .from("team_players")
+      .update({
+        jersey_number: jerseyNumber || null,
+        primary_position: primaryPosition || null,
+        secondary_position: secondaryPosition || null,
+      })
+      .eq("team_id", teamId)
+      .eq("player_id", playerId)
+      .eq("active", true)
+      .select()
 
   
 
@@ -206,8 +207,29 @@ console.log("UPDATED ROSTER:", updatedRoster)
             Edit Player
           </h1>
 
+          
+
         </div>
       </section>
+
+      <Link
+  to={`/dashboard/organizations/${organizationId}/players/${playerId}/guardians/invite`}
+>
+  <Button
+    type="button"
+    className="
+      rounded-none
+      bg-scoreboard-amber
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-cream
+    "
+  >
+    Invite Parent / Guardian
+  </Button>
+</Link>
 
       <section className="mx-auto max-w-4xl px-6 py-10">
 

@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowLeft,
+  Building2,
   CalendarDays,
   Save,
   Trophy,
@@ -9,6 +10,13 @@ import { Link, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
+
+type Organization = {
+  id: string
+  name: string
+  city: string | null
+  state: string | null
+}
 
 export function CreateTournamentPage() {
   const navigate = useNavigate()
@@ -24,8 +32,169 @@ export function CreateTournamentPage() {
 
   const [status, setStatus] = useState("draft")
 
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [organizationId, setOrganizationId] = useState("")
+
+  const [loadingOrganizations, setLoadingOrganizations] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  /*
+   * Load organizations this user is allowed to operate tournaments for.
+   *
+   * Platform Admin:
+   *   - may select any organization
+   *
+   * Normal user:
+   *   - may select an organization where they are an active
+   *     owner, admin, or team_manager
+   */
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadOrganizations() {
+      setLoadingOrganizations(true)
+      setError("")
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        if (!cancelled) {
+          setError(userError.message)
+          setLoadingOrganizations(false)
+        }
+        return
+      }
+
+      if (!user) {
+        if (!cancelled) {
+          setError("You must be signed in to create a tournament.")
+          setLoadingOrganizations(false)
+        }
+        return
+      }
+
+      /*
+       * Check Platform Admin status.
+       */
+      const {
+        data: platformAdmin,
+        error: platformAdminError,
+      } = await supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (platformAdminError) {
+        console.error(
+          "Unable to check platform admin status:",
+          platformAdminError
+        )
+      }
+
+      let availableOrganizations: Organization[] = []
+
+      if (platformAdmin) {
+        /*
+         * Platform Admin can operate a tournament for any organization.
+         */
+        const {
+          data: organizationData,
+          error: organizationError,
+        } = await supabase
+          .from("organizations")
+          .select(`
+            id,
+            name,
+            city,
+            state
+          `)
+          .order("name")
+
+        if (organizationError) {
+          if (!cancelled) {
+            setError(organizationError.message)
+            setLoadingOrganizations(false)
+          }
+          return
+        }
+
+        availableOrganizations =
+          (organizationData ?? []) as Organization[]
+      } else {
+        /*
+         * Normal organization-level tournament administrator.
+         */
+        const {
+          data: membershipData,
+          error: membershipError,
+        } = await supabase
+          .from("organization_members")
+          .select(`
+            organization_id,
+            role,
+            status,
+
+            organization:organizations (
+              id,
+              name,
+              city,
+              state
+            )
+          `)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .in("role", [
+            "owner",
+            "admin",
+            "team_manager",
+          ])
+
+        if (membershipError) {
+          if (!cancelled) {
+            setError(membershipError.message)
+            setLoadingOrganizations(false)
+          }
+          return
+        }
+
+        availableOrganizations = (membershipData ?? [])
+          .map((membership: any) => membership.organization)
+          .filter(
+            (
+              organization: Organization | null
+            ): organization is Organization =>
+              Boolean(organization?.id)
+          )
+          .sort((a, b) =>
+            a.name.localeCompare(b.name)
+          )
+      }
+
+      if (cancelled) return
+
+      setOrganizations(availableOrganizations)
+
+      /*
+       * Automatically select the organization if there is only one.
+       */
+      if (availableOrganizations.length === 1) {
+        setOrganizationId(availableOrganizations[0].id)
+      }
+
+      setLoadingOrganizations(false)
+    }
+
+    loadOrganizations()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleNameChange(value: string) {
     setName(value)
@@ -44,6 +213,11 @@ export function CreateTournamentPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
+    if (!organizationId) {
+      setError("Operating organization is required.")
+      return
+    }
+
     if (!name.trim()) {
       setError("Tournament name is required.")
       return
@@ -60,23 +234,61 @@ export function CreateTournamentPage() {
     }
 
     if (endDate < startDate) {
-      setError("End date must be on or after the start date.")
+      setError(
+        "End date must be on or after the start date."
+      )
       return
     }
 
     setSaving(true)
     setError("")
 
-    const { data, error } = await supabase
+    /*
+     * Get the authenticated user immediately before the insert.
+     */
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      setError(userError.message)
+      setSaving(false)
+      return
+    }
+
+    if (!user) {
+      setError(
+        "You must be signed in to create a tournament."
+      )
+      setSaving(false)
+      return
+    }
+
+    /*
+     * Create the tournament.
+     *
+     * These two fields are important for the new permission model:
+     *
+     * organization_id
+     * created_by_user_id
+     */
+    const { data, error: insertError } = await supabase
       .from("tournaments")
       .insert({
+        organization_id: organizationId,
+        created_by_user_id: user.id,
+
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || null,
+
         city: city.trim() || null,
-        state: state.trim() || null,
+        state: state.trim().toUpperCase() || null,
+
         start_date: startDate,
         end_date: endDate,
+
         status,
       })
       .select(`
@@ -86,8 +298,21 @@ export function CreateTournamentPage() {
       `)
       .single()
 
-    if (error) {
-      setError(error.message)
+    if (insertError) {
+      console.error(
+        "Tournament creation failed:",
+        insertError
+      )
+
+      setError(insertError.message)
+      setSaving(false)
+      return
+    }
+
+    if (!data?.id) {
+      setError(
+        "Tournament was not created. No tournament ID was returned."
+      )
       setSaving(false)
       return
     }
@@ -98,6 +323,7 @@ export function CreateTournamentPage() {
   return (
     <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
 
+      {/* HEADER */}
       <section className="border-b border-scoreboard-cream/20 bg-scoreboard-green">
         <div className="mx-auto max-w-5xl px-6 py-10">
 
@@ -123,8 +349,9 @@ export function CreateTournamentPage() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-scoreboard-muted">
-                Create the tournament first. Divisions, teams, fields,
-                registrations, and games can be added after setup.
+                Create the tournament first. Divisions,
+                teams, fields, registrations, and games can
+                be added after setup.
               </p>
             </div>
 
@@ -132,6 +359,7 @@ export function CreateTournamentPage() {
         </div>
       </section>
 
+      {/* FORM */}
       <section className="mx-auto max-w-5xl px-6 py-10">
 
         <form
@@ -145,6 +373,82 @@ export function CreateTournamentPage() {
 
           <div className="mt-6 grid gap-5">
 
+            {/* OPERATING ORGANIZATION */}
+            <label className="block">
+              <span className="scoreboard-label text-scoreboard-cream">
+                Operating Organization
+              </span>
+
+              <div className="relative mt-2">
+
+                <Building2 className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+                <select
+                  value={organizationId}
+                  onChange={(e) =>
+                    setOrganizationId(e.target.value)
+                  }
+                  disabled={
+                    loadingOrganizations ||
+                    organizations.length === 0
+                  }
+                  required
+                  className="
+                    w-full
+                    rounded-none
+                    border
+                    border-scoreboard-cream/30
+                    bg-scoreboard-cream
+                    py-3
+                    pl-10
+                    pr-3
+                    text-base
+                    text-scoreboard-dark
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                >
+                  <option value="">
+                    {loadingOrganizations
+                      ? "Loading organizations..."
+                      : "Select organization"}
+                  </option>
+
+                  {organizations.map((organization) => (
+                    <option
+                      key={organization.id}
+                      value={organization.id}
+                    >
+                      {organization.name}
+                      {organization.city
+                        ? ` — ${organization.city}${
+                            organization.state
+                              ? `, ${organization.state}`
+                              : ""
+                          }`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+
+              </div>
+
+              {!loadingOrganizations &&
+                organizations.length === 0 && (
+                  <p className="mt-2 text-xs text-scoreboard-red">
+                    You do not currently have an
+                    organization available for tournament
+                    administration.
+                  </p>
+                )}
+
+              <p className="mt-2 text-xs text-scoreboard-muted">
+                This organization will operate and manage
+                the tournament.
+              </p>
+            </label>
+
+            {/* TOURNAMENT NAME */}
             <label className="block">
               <span className="scoreboard-label text-scoreboard-cream">
                 Tournament Name
@@ -161,6 +465,7 @@ export function CreateTournamentPage() {
               />
             </label>
 
+            {/* SLUG */}
             <label className="block">
               <span className="scoreboard-label text-scoreboard-cream">
                 URL Slug
@@ -181,10 +486,12 @@ export function CreateTournamentPage() {
               />
 
               <p className="mt-2 text-xs text-scoreboard-muted">
-                /tournaments/{slug || "tournament-slug"}
+                /tournaments/
+                {slug || "tournament-slug"}
               </p>
             </label>
 
+            {/* DESCRIPTION */}
             <label className="block">
               <span className="scoreboard-label text-scoreboard-cream">
                 Description
@@ -201,6 +508,7 @@ export function CreateTournamentPage() {
               />
             </label>
 
+            {/* LOCATION */}
             <div className="grid gap-5 sm:grid-cols-2">
 
               <label className="block">
@@ -234,6 +542,7 @@ export function CreateTournamentPage() {
 
             </div>
 
+            {/* DATES */}
             <div className="grid gap-5 sm:grid-cols-2">
 
               <label className="block">
@@ -278,6 +587,7 @@ export function CreateTournamentPage() {
 
             </div>
 
+            {/* STATUS */}
             <label className="block">
               <span className="scoreboard-label text-scoreboard-cream">
                 Status
@@ -310,6 +620,7 @@ export function CreateTournamentPage() {
 
           </div>
 
+          {/* ERROR */}
           {error && (
             <div className="mt-6 border border-scoreboard-red/60 bg-scoreboard-dark p-4">
               <p className="text-sm text-scoreboard-muted">
@@ -318,11 +629,16 @@ export function CreateTournamentPage() {
             </div>
           )}
 
+          {/* ACTIONS */}
           <div className="mt-8 flex flex-wrap gap-3 border-t border-scoreboard-cream/20 pt-6">
 
             <Button
               type="submit"
-              disabled={saving}
+              disabled={
+                saving ||
+                loadingOrganizations ||
+                organizations.length === 0
+              }
               className="
                 rounded-none
                 bg-scoreboard-cream

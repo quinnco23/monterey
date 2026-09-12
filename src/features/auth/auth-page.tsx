@@ -66,7 +66,33 @@ export function AuthPage({ mode }: AuthPageProps) {
       }
   
       if (data.session) {
-        navigate("/onboarding", { replace: true })
+        // This is the normal organization registration path,
+        // so allow this account to create an organization.
+        const { error: capabilityError } =
+          await supabase.rpc(
+            "enable_organization_creation"
+          )
+      
+        if (capabilityError) {
+          console.error(
+            "ENABLE ORGANIZATION CREATION ERROR:",
+            capabilityError
+          )
+      
+          setMessage(
+            capabilityError.message
+          )
+      
+          return
+        }
+      
+        navigate(
+          "/onboarding",
+          {
+            replace: true,
+          }
+        )
+      
         return
       }
   
@@ -90,9 +116,25 @@ export function AuthPage({ mode }: AuthPageProps) {
       return
     }
   
-    const from = (location.state as LocationState | null)?.from
-  
-    navigate(from || "/dashboard", { replace: true })
+    const searchParams =
+  new URLSearchParams(
+    location.search
+  )
+
+const redirect =
+  searchParams.get("redirect")
+
+const from =
+  (location.state as LocationState | null)?.from
+
+navigate(
+  redirect ||
+    from ||
+    "/dashboard",
+  {
+    replace: true,
+  }
+)
   }
 
   const isLogin = mode === "login"

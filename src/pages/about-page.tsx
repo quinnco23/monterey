@@ -212,7 +212,7 @@ import {
             </div>
   
             <p className="scoreboard-label mt-10 text-scoreboard-amber">
-              Welcome to baseball in Santa Cruz.
+              Welcome to the  Monterey Bay League.
             </p>
   
           </div>

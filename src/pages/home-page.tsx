@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ShieldCheck,
   Users,
+  MapPin,
 } from "lucide-react"
 
 import { Link } from "react-router-dom"
@@ -17,6 +18,7 @@ type Tournament = {
   name: string
   slug: string | null
   description: string | null
+  location_name: string | null
   city: string | null
   state: string | null
   start_date: string
@@ -44,24 +46,29 @@ useEffect(() => {
     const today =
       new Date().toISOString().slice(0, 10)
 
-    const { data, error } = await supabase
+      const { data, error } = await supabase
       .from("tournaments")
       .select(`
         id,
         name,
         slug,
         description,
+        location_name,
         city,
         state,
         start_date,
         end_date,
         status
       `)
-      .neq("status", "cancelled")
+      .in("status", [
+        "registration_open",
+        "registration_closed",
+        "scheduled",
+        "in_progress",
+        "completed",
+      ])
       .gte("end_date", today)
-      .order("start_date", {
-        ascending: true,
-      })
+      .order("start_date", { ascending: true })
       .limit(6)
 
     if (error) {
@@ -101,7 +108,7 @@ useEffect(() => {
         const organizationIds =
           (membershipData ?? [])
             .filter((membership) =>
-              ["manager", "owner", "admin"].includes(
+              ["team_manager", "owner", "admin"].includes(
                 membership.role
               )
             )
@@ -211,7 +218,7 @@ return (
               <span className="h-2.5 w-2.5 bg-scoreboard-red" />
 
               <span className="text-xs font-black uppercase tracking-[0.14em] text-scoreboard-muted">
-                {featuredTournament.status === "open"
+                {featuredTournament.status === "registration_open"
                   ? "Registration Open"
                   : featuredTournament.status.replaceAll(
                       "_",
@@ -257,21 +264,35 @@ return (
 
             </h1>
 
-            {(featuredTournament.city ||
-              featuredTournament.state) && (
+            {(
+  featuredTournament.location_name ||
+  featuredTournament.city ||
+  featuredTournament.state
+) && (
+  <div className="mt-6 flex items-start gap-3">
+    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
 
-              <p className="mt-6 text-sm font-black uppercase tracking-[0.10em] text-scoreboard-cream">
+    <div>
+      {featuredTournament.location_name && (
+        <p className="text-sm font-black uppercase tracking-[0.10em] text-scoreboard-cream">
+          {featuredTournament.location_name}
+        </p>
+      )}
 
-                {[
-                  featuredTournament.city,
-                  featuredTournament.state,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-
-              </p>
-
-            )}
+      {(featuredTournament.city ||
+        featuredTournament.state) && (
+        <p className="scoreboard-label mt-1 text-scoreboard-muted">
+          {[
+            featuredTournament.city,
+            featuredTournament.state,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        </p>
+      )}
+    </div>
+  </div>
+)}
 
             {featuredTournament.description && (
 
@@ -283,55 +304,55 @@ return (
 
             <div className="mt-9 flex flex-wrap gap-3">
 
-              {registeredTournamentIds.has(featuredTournament.id) ? (
-                <Link
-                  to={`/tournaments/${featuredTournament.id}`}
-                >
-                  <Button
-                    size="lg"
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-amber
-                      bg-scoreboard-dark
-                      px-6
-                      font-bold
-                      uppercase
-                      tracking-[0.12em]
-                      text-scoreboard-amber
-                      hover:bg-scoreboard-light
-                      hover:text-scoreboard-cream
-                    "
-                  >
-                    Registered
-                    <ShieldCheck className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link
-                  to={`/tournaments/${featuredTournament.id}/register`}
-                >
-                  <Button
-                    size="lg"
-                    className="
-                      rounded-none
-                      border
-                      border-scoreboard-cream
-                      bg-scoreboard-cream
-                      px-6
-                      font-bold
-                      uppercase
-                      tracking-[0.12em]
-                      text-scoreboard-dark
-                      hover:bg-scoreboard-amber
-                      hover:text-scoreboard-dark
-                    "
-                  >
-                    Register Team
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              )}
+            {registeredTournamentIds.has(featuredTournament.id) ? (
+  <Link
+    to={`/tournaments/${featuredTournament.id}`}
+  >
+    <Button
+      size="lg"
+      className="
+        rounded-none
+        border
+        border-scoreboard-amber
+        bg-scoreboard-dark
+        px-6
+        font-bold
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-amber
+        hover:bg-scoreboard-light
+        hover:text-scoreboard-cream
+      "
+    >
+      Registered
+      <ShieldCheck className="ml-2 h-4 w-4" />
+    </Button>
+  </Link>
+) : featuredTournament.status === "registration_open" ? (
+  <Link
+    to={`/tournaments/${featuredTournament.id}/register`}
+  >
+    <Button
+      size="lg"
+      className="
+        rounded-none
+        border
+        border-scoreboard-cream
+        bg-scoreboard-cream
+        px-6
+        font-bold
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-amber
+        hover:text-scoreboard-dark
+      "
+    >
+      Register Team
+      <ArrowRight className="ml-2 h-4 w-4" />
+    </Button>
+  </Link>
+) : null}
 
               <Link
                 to={`/tournaments/${featuredTournament.id}`}
@@ -477,7 +498,7 @@ return (
                 <div>
 
                   <p className="scoreboard-label text-scoreboard-amber">
-                    {tournament.status === "open"
+                    {tournament.status === "registration_open"
                       ? "Registration Open"
                       : tournament.status.replace("_", " ")}
                   </p>
@@ -620,71 +641,111 @@ return (
 
     {/* MONTEREY BAY BOX */}
     <div className="scoreboard-panel p-4 lg:p-5">
-      <div className="h-full border border-scoreboard-cream/35 bg-scoreboard-dark p-6 sm:p-8">
+  <div className="h-full border border-scoreboard-cream/35 bg-scoreboard-dark p-6 sm:p-8">
 
-        <div className="flex items-center justify-between border-b border-scoreboard-cream/25 pb-4">
-          <p className="scoreboard-label text-scoreboard-amber">
-            Monterey Bay Tournaments
+    <div className="flex items-center justify-between border-b border-scoreboard-cream/25 pb-4">
+      <p className="scoreboard-label text-scoreboard-amber">
+        Monterey Bay League 
+      </p>
+
+      <span className="h-3 w-3 bg-scoreboard-red shadow-[0_0_12px_rgba(157,47,42,0.65)]" />
+    </div>
+
+    <h2 className="mt-6 text-2xl font-black uppercase leading-tight tracking-[0.06em] sm:text-3xl">
+      Santa Cruz Is Baseball
+    </h2>
+
+    <p className="scoreboard-label mt-3 text-scoreboard-amber">
+      Santa Cruz, California is a fantastic baseball destination.
+    </p>
+
+    <div className="mt-8 divide-y divide-scoreboard-cream/20">
+
+      {/* LEAGUE PLAY */}
+      <div className="flex gap-4 py-4">
+        <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+        <div>
+          <div className="scoreboard-label text-scoreboard-cream">
+            League Play
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
+            Year-round baseball throughout the Monterey Bay,
+            culminating with league championship games in October.
           </p>
-
-          <span className="h-3 w-3 bg-scoreboard-red shadow-[0_0_12px_rgba(157,47,42,0.65)]" />
-        </div>
-
-        <h2 className="mt-6 text-2xl font-black uppercase leading-tight tracking-[0.06em] sm:text-3xl">
-          Santa Cruz Is Baseball
-        </h2>
-
-        <p className="scoreboard-label mt-3 text-scoreboard-amber">
-          Santa Cruz, California is a premier summer travel-ball destination.
-        </p>
-
-        <div className="mt-8 divide-y divide-scoreboard-cream/20">
-
-          <div className="flex gap-4 py-4">
-            <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
-
-            <div>
-              <div className="scoreboard-label text-scoreboard-cream">
-                Tournaments
-              </div>
-
-              <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
-                Event discovery and online registration
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 py-4">
-            <Users className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
-
-            <div>
-              <div className="scoreboard-label text-scoreboard-cream">
-                Teams
-              </div>
-
-              <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
-                Team profiles, rosters, and organization management
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 py-4">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
-
-            <div>
-              <div className="scoreboard-label text-scoreboard-cream">
-                Training
-              </div>
-
-              <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
-                Book trainers, facilities, fields, and pitching machines
-              </p>
-            </div>
-          </div>
-
         </div>
       </div>
+
+      {/* TOURNAMENTS */}
+      <div className="flex gap-4 py-4">
+        <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+        <div>
+          <div className="scoreboard-label text-scoreboard-cream">
+            Tournaments
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
+            Discover Monterey Bay tournaments, register teams,
+            and manage tournament participation online.
+          </p>
+        </div>
+      </div>
+
+      {/* GAMEON */}
+      <div className="flex gap-4 py-4">
+        <span className="mt-0.5 flex h-5 min-w-5 items-center justify-center border border-scoreboard-amber text-[9px] font-black text-scoreboard-amber">
+          GO
+        </span>
+
+        <div>
+          <div className="scoreboard-label text-scoreboard-cream">
+            Powered By GameOn
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
+            GameOn is the official MBL league scoring and fan app
+            for live scores, game updates, stats, and results.
+          </p>
+        </div>
+      </div>
+
+      {/* TEAMS */}
+      <div className="flex gap-4 py-4">
+        <Users className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+        <div>
+          <div className="scoreboard-label text-scoreboard-cream">
+            Teams
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
+            Team profiles, rosters, schedules, and organization
+            management in one place.
+          </p>
+        </div>
+      </div>
+
+      {/* TRAINING */}
+      <div className="flex gap-4 py-4">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+        <div>
+          <div className="scoreboard-label text-scoreboard-cream">
+            Training
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
+            Book trainers, facilities, fields, and pitching
+            machines throughout the Monterey Bay.
+          </p>
+        </div>
+      </div>
+
     </div>
+  </div>
+</div>
 
     {/* GAMEON BOX */}
     <div className="scoreboard-panel p-4 lg:p-5">
@@ -700,7 +761,7 @@ return (
             </a>
 
             <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-scoreboard-muted">
-              10U Monterey League Standings
+              10U MBL Standings
             </p>
           </div>
 

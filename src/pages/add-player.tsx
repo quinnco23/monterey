@@ -8,12 +8,11 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
 
+import {
+  checkPlayerEligibility,
+} from "@/lib/baseballEligibility"
 
-type EligibilityResult = {
-  eligible: boolean
-  leagueAge: number
-  reason?: string
-}
+
 
 type Team = {
   id: string
@@ -36,61 +35,6 @@ type TeamPlayer = {
   player_id: string
 }
 
-function checkPlayerEligibility({
-  birthDate,
-  ageGroup,
-  seasonYear,
-}: {
-  birthDate: string | null
-  ageGroup: string | null
-  seasonYear: number | null
-}): EligibilityResult {
-  if (!birthDate) {
-    return {
-      eligible: false,
-      leagueAge: 0,
-      reason: "Date of birth required",
-    }
-  }
-
-  if (!ageGroup || !seasonYear) {
-    return {
-      eligible: false,
-      leagueAge: 0,
-      reason: "Team age information is missing",
-    }
-  }
-
-  const birthYear =
-    Number(birthDate.slice(0, 4))
-
-  const leagueAge =
-    seasonYear - birthYear
-
-  const maxAge =
-    Number(ageGroup.replace(/\D/g, ""))
-
-  if (!maxAge) {
-    return {
-      eligible: false,
-      leagueAge,
-      reason: `Unknown age group: ${ageGroup}`,
-    }
-  }
-
-  if (leagueAge > maxAge) {
-    return {
-      eligible: false,
-      leagueAge,
-      reason: `League age ${leagueAge} exceeds ${ageGroup}`,
-    }
-  }
-
-  return {
-    eligible: true,
-    leagueAge,
-  }
-}
 
 
 export function AddPlayerPage() {
@@ -301,22 +245,30 @@ const [pageLoading, setPageLoading] =
     setError("")
 
     const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    
+    if (!user) {
+      setError("You must be signed in to create a player.")
+      setLoading(false)
+      return
+    }
+
+    const {
       data: player,
       error: playerError,
     } = await supabase
       .from("players")
       .insert({
-        organization_id:
-          organizationId,
+        organization_id: organizationId,
     
-        first_name:
-          firstName.trim(),
+        created_by_user_id: user.id,
     
-        last_name:
-          lastName.trim(),
+        first_name: firstName.trim(),
     
-        birth_date:
-          birthDate || null,
+        last_name: lastName.trim(),
+    
+        birth_date: birthDate || null,
       })
       .select()
       .single()
@@ -504,6 +456,9 @@ const [pageLoading, setPageLoading] =
           const alreadyOnTeam =
             existingPlayerIds.has(player.id)
 
+            const isSelected =
+  selectedPlayer?.id === player.id
+
           const eligibility =
             checkPlayerEligibility({
               birthDate: player.birth_date,
@@ -523,8 +478,9 @@ const [pageLoading, setPageLoading] =
                 bg-scoreboard-dark/30
                 p-4
                 sm:flex-row
-                sm:items-center
-                sm:justify-between
+sm:flex-wrap
+sm:items-center
+sm:justify-between
               "
             >
               <div>
@@ -565,33 +521,102 @@ const [pageLoading, setPageLoading] =
               </div>
 
               <Button
-                type="button"
-                disabled={
-                  alreadyOnTeam ||
-                  !eligibility.eligible
-                }
-                onClick={() => {
-                  setSelectedPlayer(player)
-                  setJerseyNumber("")
-                  setPrimaryPosition("")
-                  setSecondaryPosition("")
-                  setError("")
-                }}
-                className="
-                  rounded-none
-                  bg-scoreboard-cream
-                  font-black
-                  uppercase
-                  text-scoreboard-dark
-                  hover:bg-scoreboard-amber
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                "
-              >
-                {alreadyOnTeam
-                  ? "On Roster"
-                  : "Select"}
-              </Button>
+  type="button"
+  disabled={alreadyOnTeam}
+  onClick={() => {
+    setSelectedPlayer(player)
+    setJerseyNumber("")
+    setPrimaryPosition("")
+    setSecondaryPosition("")
+    setError("")
+  }}
+  className={`
+    rounded-none
+    font-black
+    uppercase
+
+    ${
+      isSelected
+        ? "bg-scoreboard-amber text-scoreboard-dark"
+        : "bg-scoreboard-cream text-scoreboard-dark hover:bg-scoreboard-amber"
+    }
+
+    disabled:cursor-not-allowed
+    disabled:opacity-40
+  `}
+>
+  {alreadyOnTeam
+    ? "On Roster"
+    : isSelected
+      ? "Selected"
+      : eligibility.eligible
+        ? "Select"
+        : "Review"}
+</Button>
+
+{isSelected && (
+  <div className="
+    mt-4
+    w-full
+    border-t
+    border-scoreboard-cream/20
+    pt-4
+    sm:basis-full
+  ">
+    <p className="scoreboard-label text-scoreboard-amber">
+      Roster Details
+    </p>
+
+    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+      <PlayerInput
+        label="Jersey Number"
+        value={jerseyNumber}
+        onChange={setJerseyNumber}
+      />
+
+      <PositionSelect
+        label="Primary Position"
+        value={primaryPosition}
+        onChange={setPrimaryPosition}
+      />
+
+      <PositionSelect
+        label="Secondary Position"
+        value={secondaryPosition}
+        onChange={setSecondaryPosition}
+        allowNone
+      />
+    </div>
+
+    {error && (
+      <p className="mt-4 text-sm text-scoreboard-red">
+        {error}
+      </p>
+    )}
+
+    <Button
+      type="button"
+      disabled={loading}
+      onClick={handleAddPoolPlayer}
+      className="
+        mt-5
+        w-full
+        rounded-none
+        bg-scoreboard-amber
+        py-5
+        font-black
+        uppercase
+        tracking-[0.14em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-cream
+      "
+    >
+      {loading
+        ? "Adding Player..."
+        : `Add ${player.first_name} To Roster`}
+    </Button>
+  </div>
+)}
             </div>
           )
         })}
@@ -769,7 +794,7 @@ const [pageLoading, setPageLoading] =
 
           </form>
           )}
-{selectedPlayer && (
+{/* {selectedPlayer && (
   <div
     className="
       mt-6
@@ -836,7 +861,7 @@ const [pageLoading, setPageLoading] =
         : "Add To Roster"}
     </Button>
   </div>
-)}
+)} */}
         </div>
         
 

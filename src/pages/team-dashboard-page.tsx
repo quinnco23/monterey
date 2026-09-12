@@ -86,6 +86,21 @@ type TeamTournamentRegistration = {
   } | null
 }
 
+type TeamStaffMember = {
+  id: string
+  user_id: string
+  staff_role: string
+  title: string | null
+  active: boolean
+
+  profile: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+  } | null
+}
+
 export function TeamDashboardPage() {
   const { organizationId, teamId } = useParams()
   const [events, setEvents] =
@@ -98,6 +113,8 @@ const [tournamentRegistrations, setTournamentRegistrations] =
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [roster, setRoster] = useState<RosterMember[]>([])
+  const [staff, setStaff] =
+  useState<TeamStaffMember[]>([])
 
   useEffect(() => {
     async function loadTeam() {
@@ -134,6 +151,93 @@ const [tournamentRegistrations, setTournamentRegistrations] =
         return
       }
 
+  // =========================
+// LOAD TEAM STAFF
+// =========================
+
+const {
+  data: staffRows,
+  error: staffError,
+} = await supabase
+  .from("team_staff")
+  .select(`
+    id,
+    user_id,
+    staff_role,
+    title,
+    active
+  `)
+  .eq("team_id", teamId)
+  .eq("organization_id", organizationId)
+  .eq("active", true)
+  .order("staff_role")
+
+if (staffError) {
+  console.error(
+    "TEAM STAFF ERROR:",
+    staffError
+  )
+
+  setError(staffError.message)
+  setLoading(false)
+  return
+}
+
+const staffUserIds =
+  (staffRows ?? []).map(
+    (member) => member.user_id
+  )
+
+let profileRows: {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+}[] = []
+
+if (staffUserIds.length > 0) {
+  const {
+    data: profilesData,
+    error: profilesError,
+  } = await supabase
+    .from("profiles")
+    .select(`
+      id,
+      first_name,
+      last_name,
+      email
+    `)
+    .in("id", staffUserIds)
+
+  if (profilesError) {
+    console.error(
+      "TEAM STAFF PROFILES ERROR:",
+      profilesError
+    )
+
+    setError(profilesError.message)
+    setLoading(false)
+    return
+  }
+
+  profileRows = profilesData ?? []
+}
+
+const normalizedStaff: TeamStaffMember[] =
+  (staffRows ?? []).map((member) => ({
+    id: member.id,
+    user_id: member.user_id,
+    staff_role: member.staff_role,
+    title: member.title,
+    active: member.active,
+
+    profile:
+      profileRows.find(
+        (profile) =>
+          profile.id === member.user_id
+      ) ?? null,
+  }))
+
       const { data: rosterData, error: rosterError } = await supabase
   .from("team_players")
   .select(`
@@ -155,8 +259,10 @@ const [tournamentRegistrations, setTournamentRegistrations] =
   .eq("roster_status", "active")
 
 if (rosterError) {
+ 
   setError(rosterError.message)
   setLoading(false)
+  
   return
 }
 
@@ -247,6 +353,10 @@ const normalizedRoster: RosterMember[] = rawRoster.map((member) => ({
 setTeam(teamData)
 
 setRoster(normalizedRoster)
+
+setStaff(normalizedStaff)
+
+
 
 const scheduledEvents: TeamEvent[] =
   ((eventData ?? []) as TeamEvent[]).map((event) => ({
@@ -416,23 +526,27 @@ setLoading(false)
   </Button>
 </Link>
 
-              <Button
-                variant="outline"
-                className="
-                  rounded-none
-                  border-scoreboard-cream/40
-                  bg-transparent
-                  font-black
-                  uppercase
-                  tracking-[0.12em]
-                  text-scoreboard-cream
-                  hover:bg-scoreboard-light
-                  hover:text-scoreboard-cream
-                "
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Team Settings
-              </Button>
+<Link
+  to={`/dashboard/organizations/${organizationId}/teams/${teamId}/settings`}
+>
+  <Button
+    variant="outline"
+    className="
+      rounded-none
+      border-scoreboard-cream/40
+      bg-transparent
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-cream
+      hover:bg-scoreboard-light
+      hover:text-scoreboard-cream
+    "
+  >
+    <Settings className="mr-2 h-4 w-4" />
+    Team Settings
+  </Button>
+</Link>
 
             </div>
           </div>
@@ -492,19 +606,23 @@ setLoading(false)
   {/* ROSTER HEADER */}
   <div className="flex items-center justify-between border-b border-scoreboard-cream/20 pb-3">
 
-    <div className="grid flex-1 grid-cols-[60px_1fr_80px]">
-      <span className="scoreboard-label">
-        No.
-      </span>
+  <div className="grid flex-1 grid-cols-[60px_1fr_80px_auto] gap-3">
+  <span className="scoreboard-label">
+    No.
+  </span>
 
-      <span className="scoreboard-label">
-        Player
-      </span>
+  <span className="scoreboard-label">
+    Player
+  </span>
 
-      <span className="scoreboard-label text-right">
-        Pos
-      </span>
-    </div>
+  <span className="scoreboard-label text-right">
+    Pos
+  </span>
+
+  <span className="scoreboard-label text-right">
+    Actions
+  </span>
+</div>
 
     <Link
       to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/new`}
@@ -532,46 +650,94 @@ setLoading(false)
   </div>
 
   {/* ROSTER ROWS */}
-  {roster.map((member) => (
- <Link
+  {/* ROSTER ROWS */}
+{roster.map((member) => (
+  <div
     key={member.id}
-    to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player?.id}/edit`}
     className="
-      group
       grid
-      grid-cols-[60px_1fr_80px]
+      grid-cols-[60px_1fr_80px_auto]
       items-center
+      gap-3
       border-b
       border-scoreboard-cream/15
       py-4
-      transition-colors
-      hover:bg-scoreboard-light
     "
   >
-      <span className="scoreboard-number text-xl text-scoreboard-amber">
-        {member.jersey_number || "--"}
-      </span>
+    <span className="scoreboard-number text-xl text-scoreboard-amber">
+      {member.jersey_number || "--"}
+    </span>
 
-   <div>
-  <p className="font-black uppercase tracking-[0.05em]">
-    {member.player?.first_name ?? "Unknown"}{" "}
-    {member.player?.last_name ?? "Player"}
-  </p>
+    <div>
+      <p className="font-black uppercase tracking-[0.05em]">
+        {member.player?.first_name ?? "Unknown"}{" "}
+        {member.player?.last_name ?? "Player"}
+      </p>
 
-  {member.player?.graduation_year && (
-  <p className="mt-1 text-xs text-scoreboard-muted">
-    Class of {member.player.graduation_year}
-  </p>
-)}
-</div>
+      {member.player?.graduation_year && (
+        <p className="mt-1 text-xs text-scoreboard-muted">
+          Class of {member.player.graduation_year}
+        </p>
+      )}
+    </div>
 
-    
+    <span className="scoreboard-number text-right">
+      {member.primary_position || "UTIL"}
+    </span>
 
-      <span className="scoreboard-number text-right transition-colors group-hover:text-scoreboard-amber">
-  {member.primary_position || "UTIL"}
-</span>
-    </Link>
-  ))}
+    <div className="flex items-center gap-2">
+      {member.player?.id && (
+        <>
+          <Link
+            to={`/dashboard/organizations/${organizationId}/players/${member.player.id}`}
+            className="
+              inline-flex
+              items-center
+              justify-center
+              border
+              border-scoreboard-amber
+              px-3
+              py-2
+              text-[10px]
+              font-black
+              uppercase
+              tracking-[0.12em]
+              text-scoreboard-amber
+              transition-colors
+              hover:bg-scoreboard-amber
+              hover:text-scoreboard-dark
+            "
+          >
+            Profile
+          </Link>
+
+          <Link
+            to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player.id}/edit`}
+            className="
+              inline-flex
+              items-center
+              justify-center
+              border
+              border-scoreboard-cream/30
+              px-3
+              py-2
+              text-[10px]
+              font-black
+              uppercase
+              tracking-[0.12em]
+              text-scoreboard-cream
+              transition-colors
+              hover:border-scoreboard-amber
+              hover:text-scoreboard-amber
+            "
+          >
+            Edit
+          </Link>
+        </>
+      )}
+    </div>
+  </div>
+))}
 
 </div>
 )}
@@ -579,12 +745,98 @@ setLoading(false)
         {/* SIDEBAR */}
         <div className="space-y-6">
 
+          {/* TEAM STAFF */}
+<div className="scoreboard-panel p-4">
+  <div className="border border-scoreboard-cream/30 bg-scoreboard-green p-6">
+
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="scoreboard-label text-scoreboard-amber">
+          Staff
+        </p>
+
+        <h2 className="mt-2 text-xl font-black uppercase tracking-[0.07em]">
+          Coaches & Staff
+        </h2>
+      </div>
+
+      <Users className="h-5 w-5 text-scoreboard-amber" />
+    </div>
+
+    <div className="mt-5 border-t border-scoreboard-cream/20">
+      {staff.length === 0 ? (
+        <div className="py-5">
+          <p className="text-sm text-scoreboard-muted">
+            No coaches or team staff have been added yet.
+          </p>
+        </div>
+      ) : (
+        staff.map((member) => {
+          const name = [
+            member.profile?.first_name,
+            member.profile?.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+
+          return (
+            <div
+              key={member.id}
+              className="border-b border-scoreboard-cream/15 py-4 last:border-b-0"
+            >
+              <p className="font-black uppercase">
+                {name ||
+                  member.profile?.email ||
+                  "Staff Member"}
+              </p>
+
+              <p className="mt-1 text-xs uppercase tracking-[0.10em] text-scoreboard-muted">
+                {member.title ||
+                  member.staff_role.replaceAll("_", " ")}
+              </p>
+            </div>
+          )
+        })
+      )}
+    </div>
+
+    <Link
+      to={`/dashboard/organizations/${organizationId}/teams/${teamId}/staff/invite`}
+      className="
+        mt-5
+        inline-flex
+        w-full
+        items-center
+        justify-center
+        border
+        border-scoreboard-amber
+        bg-scoreboard-amber
+        px-4
+        py-3
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.14em]
+        text-scoreboard-dark
+        transition-colors
+        hover:bg-scoreboard-cream
+      "
+    >
+      <Plus className="mr-2 h-4 w-4" />
+      Invite Coach / Staff
+    </Link>
+
+  </div>
+</div>
+
           <DashboardPanel
             eyebrow="GameOn"
             title="Game Center"
             description="Connect this team to GameOn for scoring, game results, box scores, and statistics."
             action="Connect GameOn"
           />
+
+          
 
           <div className="scoreboard-panel p-4">
   <div className="border border-scoreboard-cream/30 bg-scoreboard-green p-6">
