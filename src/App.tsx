@@ -74,6 +74,8 @@ import { OrganizationCreatorRoute } from "@/features/auth/organization-creator-r
 import { GuardianDashboardPage } from "./pages/guardian-dashboard-page"
 import { GuardianPlayerPage } from "./pages/guardian-player-page"
 import { InviteTeamStaffPage } from "./pages/invite-team-staff-page"
+import { PasswordInput } from "@/features/auth/passwoord-input"
+import { StaffRegisterPage } from "./pages/staff-register-page"
 
 import { AcceptTeamStaffInvitationPage } from "./pages/accept-team-staff-invitation-page"
 export default function App() {
@@ -176,6 +178,16 @@ export default function App() {
 <Route
   path="/guardian/register"
   element={<GuardianRegisterPage />}
+/>
+
+<Route
+  path="/staff/invitations/:invitationId"
+  element={<AcceptTeamStaffInvitationPage />}
+/>
+
+<Route
+  path="/staff/register"
+  element={<StaffRegisterPage />}
 />
 
 <Route
