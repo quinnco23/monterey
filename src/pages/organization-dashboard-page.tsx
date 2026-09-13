@@ -533,18 +533,7 @@ const upcomingSchedule =
                   
                 </Link>
 
-                 <Button
-  type="button"
-  onClick={testAcceptGuardianInvite}
->
-  Test Guardian Invite
-</Button>
-<Button
-  type="button"
-  onClick={checkCurrentSession}
->
-  Check Session
-</Button> 
+               
 
                 
   
@@ -673,443 +662,49 @@ const upcomingSchedule =
 
 </section>
 
-<section className="mx-auto grid max-w-7xl gap-6 px-6 pb-14 lg:grid-cols-2">
+{/* =========================
+    TEAMS
+========================= */}
 
-{/* TEAMS */}
-{/* <DashboardPanel
-  eyebrow="Organization"
-  title="Teams"
-  description="Create and manage your travel baseball teams, age groups, classifications, and team profiles."
-  href={`/dashboard/organizations/${organization.id}/teams`}
-  action="Manage Teams"
-/> */}
+<section className="mx-auto max-w-7xl px-6 pb-12">
 
-{/* MEMBERS */}
-<Link
-  to={`/dashboard/organizations/${organization.id}/members`}
-  className="
-    scoreboard-panel
-    flex
-    items-center
-    justify-between
-    p-5
-    transition
-    hover:border-scoreboard-amber
-  "
->
-  <div>
-    <p className="scoreboard-label text-scoreboard-amber">
-      Organization
-    </p>
-
-    <h2 className="mt-1 text-lg font-black uppercase">
-      Members & Staff
-    </h2>
-
-    <p className="mt-2 text-sm opacity-60">
-      Coaches, managers, scorekeepers, and organization access.
-    </p>
-  </div>
-
-  <span className="text-xl text-scoreboard-amber">
-    →
-  </span>
-</Link>
-
-{/* TOURNAMENTS */}
-{/* UPCOMING SCHEDULE */}
-<div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
-
-  <div className="flex items-start justify-between gap-4">
+  {/* SECTION HEADER */}
+  <div className="flex flex-col gap-4 border-b border-scoreboard-cream/20 pb-5 sm:flex-row sm:items-end sm:justify-between">
 
     <div>
       <p className="scoreboard-label text-scoreboard-amber">
-        Calendar
+        Baseball
       </p>
 
-      <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
-        Upcoming events
-      </h2>
-    </div>
-
-    <Link
-      to={`/dashboard/organizations/${organization.id}/schedule`}
-      className="
-        text-xs
-        font-black
-        uppercase
-        tracking-[0.10em]
-        text-scoreboard-amber
-        hover:text-scoreboard-cream
-      "
-    >
-      View All →
-    </Link>
-
-  </div>
-
-  <div className="mt-6 border-t border-scoreboard-cream/20">
-
-    {upcomingSchedule.length === 0 ? (
-      <div className="py-5">
-
-        <p className="text-sm text-scoreboard-muted">
-          No upcoming events.
-        </p>
-
-        <Link
-          to={`/dashboard/organizations/${organization.id}/schedule/new`}
-          className="
-            mt-4
-            inline-flex
-            text-xs
-            font-black
-            uppercase
-            tracking-[0.10em]
-            text-scoreboard-amber
-            hover:text-scoreboard-cream
-          "
-        >
-          + Schedule Event
-        </Link>
-
-      </div>
-    ) : (
-      upcomingSchedule.map((event) => {
-        const start =
-          new Date(event.start_time)
-
-        return (
-          <Link
-            key={event.id}
-            to={
-              event.source ===
-                "registered_tournament" &&
-              event.tournament_id
-                ? `/tournaments/${event.tournament_id}`
-                : `/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`
-            }
-            className="
-              group
-              flex
-              items-center
-              justify-between
-              gap-4
-              border-b
-              border-scoreboard-cream/15
-              py-4
-              last:border-b-0
-            "
-          >
-
-            <div className="min-w-0">
-
-              <div className="flex flex-wrap items-center gap-2">
-
-                <span className="scoreboard-label text-scoreboard-amber">
-                {event.source === "registered_tournament"
-  ? "Registered Tournament"
-  : event.event_type.replaceAll("_", " ")}
-                </span>
-
-                {event.teams && (
-                  <span className="text-xs text-scoreboard-muted">
-                    {[
-                      event.teams.age_group,
-                      event.teams.name,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </span>
-                )}
-
-              </div>
-
-              <p className="
-                mt-2
-                font-black
-                uppercase
-                tracking-[0.04em]
-                group-hover:text-scoreboard-amber
-              ">
-                {event.title}
-              </p>
-
-              <p className="mt-1 text-xs text-scoreboard-muted">
-                {start.toLocaleDateString([], {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-
-                {" • "}
-
-                {start.toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-
-                {event.location_name && (
-                  <>
-                    {" • "}
-                    {event.location_name}
-                  </>
-                )}
-              </p>
-
-            </div>
-
-            <ArrowRight className="h-4 w-4 shrink-0 text-scoreboard-amber" />
-
-          </Link>
-        )
-      })
-    )}
-
-  </div>
-
-</div>
-
-
-{/* SCHEDULED TOURNAMENTS */}
-{/* <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
-
-  <div className="flex items-start justify-between gap-4">
-
-    <div>
-      <p className="scoreboard-label text-scoreboard-amber">
-        Competition
-      </p>
-
-      <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
-        Scheduled Tournaments
-      </h2>
-    </div>
-
-    <Link
-      to={`/dashboard/organizations/${organization.id}/schedule`}
-      className="
-        text-xs
-        font-black
-        uppercase
-        tracking-[0.10em]
-        text-scoreboard-amber
-        hover:text-scoreboard-cream
-      "
-    >
-      View Schedule →
-    </Link>
-
-  </div>
-
-  <div className="mt-6 border-t border-scoreboard-cream/20">
-
-    {scheduledTournaments.length === 0 ? (
-      <div className="py-5">
-
-        <p className="text-sm text-scoreboard-muted">
-          No tournaments currently scheduled.
-        </p>
-
-        <Link
-          to={`/dashboard/organizations/${organization.id}/schedule/new`}
-          className="
-            mt-4
-            inline-flex
-            text-xs
-            font-black
-            uppercase
-            tracking-[0.10em]
-            text-scoreboard-amber
-            hover:text-scoreboard-cream
-          "
-        >
-          + Schedule Tournament
-        </Link>
-
-      </div>
-    ) : (
-      scheduledTournaments.map((event) => {
-        const start =
-          new Date(event.start_time)
-
-        const end =
-          event.end_time
-            ? new Date(event.end_time)
-            : null
-
-        return (
-          <Link
-            key={event.id}
-            to={`/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`}
-            className="
-              group
-              flex
-              items-center
-              justify-between
-              gap-4
-              border-b
-              border-scoreboard-cream/15
-              py-4
-              last:border-b-0
-            "
-          >
-
-            <div className="min-w-0">
-
-              <p className="
-                font-black
-                uppercase
-                tracking-[0.04em]
-                group-hover:text-scoreboard-amber
-              ">
-                {event.title}
-              </p>
-
-              <p className="mt-1 text-xs text-scoreboard-muted">
-
-                {start.toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                })}
-
-                {end && (
-                  <>
-                    {" – "}
-
-                    {end.toLocaleDateString([], {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </>
-                )}
-
-              </p>
-
-              {(event.teams ||
-                event.location_name) && (
-                <p className="mt-1 text-xs text-scoreboard-muted">
-
-                  {event.teams &&
-                    [
-                      event.teams.age_group,
-                      event.teams.name,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-
-                  {event.teams &&
-                    event.location_name &&
-                    " • "}
-
-                  {event.location_name}
-
-                </p>
-              )}
-
-            </div>
-
-            <ArrowRight className="h-4 w-4 shrink-0 text-scoreboard-amber" />
-
-          </Link>
-        )
-      })
-    )}
-
-  </div>
-
-</div> */}
-
-{/* SETTINGS */}
-<Link
-  to={`/dashboard/organizations/${organization.id}/settings`}
-  className="
-    scoreboard-panel
-    flex
-    items-center
-    justify-between
-    p-5
-    transition
-    hover:border-scoreboard-amber
-  "
->
-  <div>
-    <p className="scoreboard-label text-scoreboard-amber">
-      Administration
-    </p>
-
-    <h2 className="mt-1 text-lg font-black uppercase">
-      Organization Settings
-    </h2>
-
-    <p className="mt-2 text-sm opacity-60">
-      Manage organization information and preferences.
-    </p>
-  </div>
-
-  <span className="text-xl text-scoreboard-amber">
-    →
-  </span>
-</Link>
-
-</section>
-
-
-{/* TEAMS */}
-<section className="mx-auto max-w-7xl px-6 pb-8">
-<p className="scoreboard-label text-scoreboard-amber">
-        Organization
-      </p>
-  <div className="flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
-
-    <div>
-      
-
-      <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
+      <h2 className="mt-2 text-3xl font-black uppercase tracking-[0.08em]">
         Teams
       </h2>
 
-      <Link
-  to={`/dashboard/organizations/${organization.id}/players`}
-  className="
-    block
-    border
-    border-scoreboard-cream/20
-    bg-scoreboard-green
-    p-5
-  "
->
-  
-
-  <div className="mt-2 flex items-end justify-between">
-    <div>
-      <h2 className="text-xl font-bold text-scoreboard-cream">
-        Player Pool
-      </h2>
-
-      <p className="mt-1 text-sm text-scoreboard-muted">
-        Manage players and build team rosters
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-scoreboard-muted">
+        Manage team rosters, coaches, schedules,
+        tournaments, and GameOn activity.
       </p>
-    </div>
-
-    <span className="text-scoreboard-amber px-3">
-      View →
-    </span>
-  </div>
-</Link>
     </div>
 
     <Link
       to={`/dashboard/organizations/${organization.id}/teams/new`}
       className="
+        inline-flex
+        min-h-11
+        items-center
+        justify-center
+        gap-2
+        border
+        border-scoreboard-amber
+        bg-scoreboard-amber
+        px-5
+        py-3
         text-xs
         font-black
         uppercase
-        tracking-[0.14em]
-        text-scoreboard-cream
-        transition-colors
-        hover:text-scoreboard-amber
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-cream
       "
     >
       + Create Team
@@ -1117,6 +712,99 @@ const upcomingSchedule =
 
   </div>
 
+
+  {/* TEAM TOOLS */}
+  <div className="mt-6 grid gap-5 lg:grid-cols-[.7fr_1.3fr]">
+
+    {/* PLAYER POOL */}
+    <Link
+      to={`/dashboard/organizations/${organization.id}/players`}
+      className="
+        group
+        border
+        border-scoreboard-cream/25
+        bg-scoreboard-green
+        p-6
+        transition-colors
+        hover:border-scoreboard-amber/60
+        hover:bg-scoreboard-light
+      "
+    >
+      <div className="flex items-start justify-between gap-4">
+
+        <div>
+          <p className="scoreboard-label text-scoreboard-amber">
+            Organization Players
+          </p>
+
+          <h3 className="mt-3 text-2xl font-black uppercase tracking-[0.05em]">
+            Player Pool
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
+            Create and manage players, then assign them
+            to team rosters.
+          </p>
+        </div>
+
+        <Users className="h-6 w-6 shrink-0 text-scoreboard-amber" />
+
+      </div>
+
+      <div className="mt-7 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
+
+        <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber">
+          Manage Players
+        </span>
+
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+
+      </div>
+    </Link>
+
+
+    {/* QUICK TEAM SUMMARY */}
+    <div className="
+      border
+      border-scoreboard-cream/25
+      bg-scoreboard-green
+      p-6
+    ">
+
+      <p className="scoreboard-label text-scoreboard-amber">
+        Team Overview
+      </p>
+
+      <div className="mt-5 grid grid-cols-2 gap-4">
+
+        <div className="border border-scoreboard-cream/15 bg-scoreboard-dark p-4">
+          <p className="scoreboard-label text-scoreboard-muted">
+            Active Teams
+          </p>
+
+          <p className="scoreboard-number mt-2 text-3xl">
+            {stats.teams}
+          </p>
+        </div>
+
+        <div className="border border-scoreboard-cream/15 bg-scoreboard-dark p-4">
+          <p className="scoreboard-label text-scoreboard-muted">
+            Tournaments
+          </p>
+
+          <p className="scoreboard-number mt-2 text-3xl">
+            {stats.tournaments}
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  {/* TEAM CARDS */}
   {teams.length === 0 ? (
 
     <div className="mt-6 border border-scoreboard-cream/25 bg-scoreboard-green p-8">
@@ -1129,9 +817,10 @@ const upcomingSchedule =
         Create Your First Team
       </h3>
 
-      <p className="mt-3 text-sm text-scoreboard-muted">
-        Add a team to begin building rosters, registering for tournaments,
-        and connecting games to GameOn.
+      <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
+        Add a team to begin building rosters,
+        registering for tournaments, and connecting
+        games to GameOn.
       </p>
 
       <Link
@@ -1155,7 +844,7 @@ const upcomingSchedule =
         "
       >
         Create Team
-        <ArrowRight className="h-4 w-4 "  />
+        <ArrowRight className="h-4 w-4" />
       </Link>
 
     </div>
@@ -1172,7 +861,6 @@ const upcomingSchedule =
           className="
             group
             block
-            cursor-pointer
             border
             border-scoreboard-cream/25
             bg-scoreboard-green
@@ -1220,18 +908,16 @@ const upcomingSchedule =
 
           <div className="mt-7 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
 
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber ">
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber">
               Team Dashboard
             </span>
 
-            <ArrowRight
-              className="
-                h-4
-                w-4
-                transition-transform
-                group-hover:translate-x-1
-              "
-            />
+            <ArrowRight className="
+              h-4
+              w-4
+              transition-transform
+              group-hover:translate-x-1
+            " />
 
           </div>
 
@@ -1244,6 +930,334 @@ const upcomingSchedule =
   )}
 
 </section>
+
+
+{/* =========================
+    ORGANIZATION
+========================= */}
+
+<section className="border-t border-scoreboard-cream/20 bg-scoreboard-green/30">
+
+  <div className="mx-auto max-w-7xl px-6 py-12">
+
+    {/* SECTION HEADER */}
+    <div className="border-b border-scoreboard-cream/20 pb-5">
+
+      <p className="scoreboard-label text-scoreboard-amber">
+        Administration
+      </p>
+
+      <h2 className="mt-2 text-3xl font-black uppercase tracking-[0.08em]">
+        Organization
+      </h2>
+
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-scoreboard-muted">
+        Manage league-wide scheduling, members,
+        settings, and organization resources.
+      </p>
+
+    </div>
+
+
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_.65fr]">
+
+      {/* UPCOMING EVENTS */}
+      <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+
+        <div className="flex items-start justify-between gap-4">
+
+          <div>
+            <p className="scoreboard-label text-scoreboard-amber">
+              Calendar
+            </p>
+
+            <h3 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
+              Upcoming Events
+            </h3>
+          </div>
+
+          <Link
+            to={`/dashboard/organizations/${organization.id}/schedule`}
+            className="
+              text-xs
+              font-black
+              uppercase
+              tracking-[0.10em]
+              text-scoreboard-amber
+              hover:text-scoreboard-cream
+            "
+          >
+            View All →
+          </Link>
+
+        </div>
+
+
+        <div className="mt-6 border-t border-scoreboard-cream/20">
+
+          {upcomingSchedule.length === 0 ? (
+
+            <div className="py-6">
+
+              <p className="text-sm text-scoreboard-muted">
+                No upcoming events.
+              </p>
+
+              <Link
+                to={`/dashboard/organizations/${organization.id}/schedule/new`}
+                className="
+                  mt-4
+                  inline-flex
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.10em]
+                  text-scoreboard-amber
+                  hover:text-scoreboard-cream
+                "
+              >
+                + Schedule Event
+              </Link>
+
+            </div>
+
+          ) : (
+
+            upcomingSchedule.map((event) => {
+              const start =
+                new Date(event.start_time)
+
+              return (
+                <Link
+                  key={event.id}
+                  to={
+                    event.source ===
+                      "registered_tournament" &&
+                    event.tournament_id
+                      ? `/tournaments/${event.tournament_id}`
+                      : `/dashboard/organizations/${organization.id}/schedule/${event.id}/edit`
+                  }
+                  className="
+                    group
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    border-b
+                    border-scoreboard-cream/15
+                    py-4
+                    last:border-b-0
+                  "
+                >
+
+                  <div className="min-w-0">
+
+                    <div className="flex flex-wrap items-center gap-2">
+
+                      <span className="scoreboard-label text-scoreboard-amber">
+                        {event.source === "registered_tournament"
+                          ? "Registered Tournament"
+                          : event.event_type.replaceAll("_", " ")}
+                      </span>
+
+                      {event.teams && (
+                        <span className="text-xs text-scoreboard-muted">
+                          {[
+                            event.teams.age_group,
+                            event.teams.name,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        </span>
+                      )}
+
+                    </div>
+
+                    <p className="
+                      mt-2
+                      font-black
+                      uppercase
+                      tracking-[0.04em]
+                      group-hover:text-scoreboard-amber
+                    ">
+                      {event.title}
+                    </p>
+
+                    <p className="mt-1 text-xs text-scoreboard-muted">
+
+                      {start.toLocaleDateString([], {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
+
+                      {" • "}
+
+                      {start.toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+
+                      {event.location_name && (
+                        <>
+                          {" • "}
+                          {event.location_name}
+                        </>
+                      )}
+
+                    </p>
+
+                  </div>
+
+                  <ArrowRight className="h-4 w-4 shrink-0 text-scoreboard-amber" />
+
+                </Link>
+              )
+            })
+
+          )}
+
+        </div>
+
+      </div>
+
+
+      {/* ORGANIZATION TOOLS */}
+      <div className="space-y-4">
+
+        <Link
+          to={`/dashboard/organizations/${organization.id}/members`}
+          className="
+            group
+            flex
+            items-center
+            justify-between
+            border
+            border-scoreboard-cream/25
+            bg-scoreboard-green
+            p-5
+            transition-colors
+            hover:border-scoreboard-amber
+          "
+        >
+          <div>
+            <p className="scoreboard-label text-scoreboard-amber">
+              Access
+            </p>
+
+            <h3 className="mt-2 text-lg font-black uppercase">
+              Members & Staff
+            </h3>
+
+            <p className="mt-2 text-sm text-scoreboard-muted">
+              Organization roles and permissions.
+            </p>
+          </div>
+
+          <ArrowRight className="h-5 w-5 text-scoreboard-amber transition-transform group-hover:translate-x-1" />
+        </Link>
+
+
+        <Link
+          to={`/dashboard/organizations/${organization.id}/settings`}
+          className="
+            group
+            flex
+            items-center
+            justify-between
+            border
+            border-scoreboard-cream/25
+            bg-scoreboard-green
+            p-5
+            transition-colors
+            hover:border-scoreboard-amber
+          "
+        >
+          <div>
+            <p className="scoreboard-label text-scoreboard-amber">
+              Administration
+            </p>
+
+            <h3 className="mt-2 text-lg font-black uppercase">
+              Organization Settings
+            </h3>
+
+            <p className="mt-2 text-sm text-scoreboard-muted">
+              Organization information and preferences.
+            </p>
+          </div>
+
+          <Settings className="h-5 w-5 text-scoreboard-amber" />
+        </Link>
+
+
+        <Link
+          to="/dashboard/reservations"
+          className="
+            group
+            flex
+            items-center
+            justify-between
+            border
+            border-scoreboard-cream/25
+            bg-scoreboard-green
+            p-5
+            transition-colors
+            hover:border-scoreboard-amber
+          "
+        >
+          <div>
+            <p className="scoreboard-label text-scoreboard-amber">
+              Facilities
+            </p>
+
+            <h3 className="mt-2 text-lg font-black uppercase">
+              My Reservations
+            </h3>
+
+            <p className="mt-2 text-sm text-scoreboard-muted">
+              Fields, facilities, and training bookings.
+            </p>
+          </div>
+
+          <ArrowRight className="h-5 w-5 text-scoreboard-amber transition-transform group-hover:translate-x-1" />
+        </Link>
+
+
+        <Link
+          to={`/dashboard/organizations/${organization.id}/schedule/new`}
+          className="
+            flex
+            min-h-12
+            items-center
+            justify-center
+            gap-2
+            border
+            border-scoreboard-amber
+            bg-scoreboard-amber
+            px-5
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.12em]
+            text-scoreboard-dark
+            hover:bg-scoreboard-cream
+          "
+        >
+          <CalendarPlus className="h-4 w-4" />
+          Schedule Event
+        </Link>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+
 
 
 {/* DASHBOARD PANELS */}

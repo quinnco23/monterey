@@ -151,7 +151,7 @@ const [tournamentRegistrations, setTournamentRegistrations] =
         return
       }
 
-  // =========================
+ // =========================
 // LOAD TEAM STAFF
 // =========================
 
@@ -159,18 +159,18 @@ const {
   data: staffRows,
   error: staffError,
 } = await supabase
-  .from("team_staff")
+  .from("team_members")
   .select(`
     id,
     user_id,
-    staff_role,
+    role,
     title,
     active
   `)
   .eq("team_id", teamId)
   .eq("organization_id", organizationId)
   .eq("active", true)
-  .order("staff_role")
+  .order("role")
 
 if (staffError) {
   console.error(
@@ -227,7 +227,7 @@ const normalizedStaff: TeamStaffMember[] =
   (staffRows ?? []).map((member) => ({
     id: member.id,
     user_id: member.user_id,
-    staff_role: member.staff_role,
+    staff_role: member.role,
     title: member.title,
     active: member.active,
 
@@ -355,6 +355,8 @@ setTeam(teamData)
 setRoster(normalizedRoster)
 
 setStaff(normalizedStaff)
+
+
 
 
 
