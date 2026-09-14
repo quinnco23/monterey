@@ -30,6 +30,16 @@ export function GuardianRegisterPage() {
 
   const invitationId =
     searchParams.get("invitation")
+    const invitationType =
+  searchParams.get("type")
+
+const isPlayerTeamInvitation =
+  invitationType === "player-team"
+
+const invitationReturnPath =
+  isPlayerTeamInvitation
+    ? `/player/invitations/${invitationId}`
+    : `/guardian/invitations/${invitationId}`
 
   const [invitation, setInvitation] =
     useState<GuardianInvitation | null>(null)
@@ -91,9 +101,9 @@ export function GuardianRegisterPage() {
   ) {
     return (
       <Navigate
-        to={`/guardian/invitations/${invitationId}`}
-        replace
-      />
+  to={invitationReturnPath}
+  replace
+/>
     )
   }
 
@@ -120,7 +130,7 @@ export function GuardianRegisterPage() {
     setMessage("")
 
     const invitationUrl =
-      `${window.location.origin}/guardian/invitations/${invitationId}`
+  `${window.location.origin}${invitationReturnPath}`
 
     const {
       data,
@@ -160,12 +170,12 @@ export function GuardianRegisterPage() {
      */
     if (data.session) {
       navigate(
-        `/guardian/invitations/${invitationId}`,
+        invitationReturnPath,
         {
           replace: true,
         }
       )
-
+    
       return
     }
 
@@ -363,9 +373,9 @@ export function GuardianRegisterPage() {
                 Already have an account?{" "}
 
                 <Link
-                  to={`/login?redirect=${encodeURIComponent(
-                    `/guardian/invitations/${invitationId}`
-                  )}`}
+                    to={`/login?redirect=${encodeURIComponent(
+                      invitationReturnPath
+                    )}`}
                   className="
                     font-black
                     uppercase
