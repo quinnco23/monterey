@@ -192,10 +192,7 @@ export default function App() {
   element={<StaffRegisterPage />}
 />
 
-<Route
-  path="/staff/invitations/:invitationId"
-  element={<AcceptTeamStaffInvitationPage />}
-/>
+
 
 <Route
   path="/player/invitations/:invitationId"
