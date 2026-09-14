@@ -78,6 +78,8 @@ import { PasswordInput } from "@/features/auth/passwoord-input"
 import { StaffRegisterPage } from "./pages/staff-register-page"
 
 import { AcceptTeamStaffInvitationPage } from "./pages/accept-team-staff-invitation-page"
+import { InvitePlayerToTeamPage } from "./pages/invite-player-team-page"
+import { AcceptPlayerTeamInvitationPage } from "./pages/accept-player-team-invitation-page"
 export default function App() {
   return (
     <BrowserRouter>
@@ -194,6 +196,8 @@ export default function App() {
   path="/staff/invitations/:invitationId"
   element={<AcceptTeamStaffInvitationPage />}
 />
+
+
 
           {/* =========================
               PROTECTED USER ROUTES
@@ -350,6 +354,11 @@ export default function App() {
 <Route
   path="/dashboard/organizations/:organizationId/teams/:teamId/staff/invite"
   element={<InviteTeamStaffPage />}
+/>
+
+<Route
+  path="/dashboard/organizations/:organizationId/players/:playerId/invite"
+  element={<InvitePlayerToTeamPage />}
 />
 
           {/* =========================

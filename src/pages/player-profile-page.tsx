@@ -346,6 +346,14 @@ export function PlayerProfilePage() {
   </Button>
 </Link>
 
+<Link
+  to={`/dashboard/organizations/${organizationId}/players/${player.id}/invite`}
+>
+  <Button>
+    Invite To Team
+  </Button>
+</Link>
+
         </div>
       </section>
 
