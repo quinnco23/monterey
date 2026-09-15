@@ -29,6 +29,8 @@ export function EditPlayerPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [rosterPlayerId, setRosterPlayerId] =
+  useState<string | null>(null)
 
   useEffect(() => {
     async function loadPlayer() {
@@ -40,75 +42,123 @@ export function EditPlayerPage() {
   
       // Load the main player record
       const { data: playerData, error: playerError } =
-        await supabase
-          .from("players")
-          .select(`
-            id,
-            organization_id,
-            first_name,
-            last_name,
-            graduation_year
-          `)
-          .eq("id", playerId)
-          .eq("organization_id", organizationId)
-          .maybeSingle()
-  
-      if (playerError) {
-        setError(playerError.message)
-        setLoading(false)
-        return
-      }
-  
-      if (!playerData) {
-        setError("Player not found.")
-        setLoading(false)
-        return
-      }
-  
-      // Load this player's team roster information
-      const { data: rosterData, error: rosterError } =
-        await supabase
-          .from("team_players")
-          .select(`
-            id,
-            jersey_number,
-            primary_position,
-            secondary_position,
-            roster_status,
-            active
-          `)
-          .eq("team_id", teamId)
-          .eq("player_id", playerId)
-          .eq("active", true)
-          .maybeSingle()
-  
-      if (rosterError) {
-        setError(rosterError.message)
-        setLoading(false)
-        return
-      }
-  
-      if (!rosterData) {
-        setError("This player is not currently on this team's roster.")
-        setLoading(false)
-        return
-      }
-  
-      // Populate the form
-      setFirstName(playerData.first_name ?? "")
-      setLastName(playerData.last_name ?? "")
-  
-      setGraduationYear(
-        playerData.graduation_year
-          ? String(playerData.graduation_year)
-          : ""
-      )
-  
-      setJerseyNumber(rosterData.jersey_number ?? "")
-      setPrimaryPosition(rosterData.primary_position ?? "")
-      setSecondaryPosition(rosterData.secondary_position ?? "")
-  
+      await supabase
+        .from("players")
+        .select(`
+          id,
+          organization_id,
+          first_name,
+          last_name,
+          graduation_year
+        `)
+        .eq("id", playerId)
+        .eq("organization_id", organizationId)
+        .maybeSingle()
+    
+    if (playerError) {
+      setError(playerError.message)
       setLoading(false)
+      return
+    }
+    
+    if (!playerData) {
+      setError("Player not found.")
+      setLoading(false)
+      return
+    }
+    
+    // Load current roster for this team
+    const {
+      data: rosterRecord,
+      error: rosterRecordError,
+    } = await supabase
+      .from("rosters")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("organization_id", organizationId)
+      .in("status", [
+        "draft",
+        "open",
+        "active",
+        "locked",
+      ])
+      .order("season_year", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle()
+    
+    if (rosterRecordError) {
+      setError(rosterRecordError.message)
+      setLoading(false)
+      return
+    }
+    
+    if (!rosterRecord) {
+      setError("This team does not have a current roster.")
+      setLoading(false)
+      return
+    }
+    
+    // Load this player's roster membership
+    const {
+      data: rosterData,
+      error: rosterError,
+    } = await supabase
+      .from("roster_players")
+      .select(`
+        id,
+        jersey_number,
+        primary_position,
+        secondary_position,
+        roster_status,
+        invitation_status,
+        eligibility_status
+      `)
+      .eq("roster_id", rosterRecord.id)
+      .eq("player_id", playerId)
+      .maybeSingle()
+    
+    if (rosterError) {
+      setError(rosterError.message)
+      setLoading(false)
+      return
+    }
+    
+    if (!rosterData) {
+      setError(
+        "This player is not currently on this team's roster."
+      )
+      setLoading(false)
+      return
+    }
+    
+    // Save roster_players row ID for updates later
+    setRosterPlayerId(rosterData.id)
+    
+    // Populate the form
+    setFirstName(playerData.first_name ?? "")
+    setLastName(playerData.last_name ?? "")
+    
+    setGraduationYear(
+      playerData.graduation_year
+        ? String(playerData.graduation_year)
+        : ""
+    )
+    
+    setJerseyNumber(
+      rosterData.jersey_number ?? ""
+    )
+    
+    setPrimaryPosition(
+      rosterData.primary_position ?? ""
+    )
+    
+    setSecondaryPosition(
+      rosterData.secondary_position ?? ""
+    )
+    
+    setLoading(false)
     }
   
     void loadPlayer()

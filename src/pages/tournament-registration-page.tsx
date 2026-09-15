@@ -105,16 +105,18 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
           .single(),
 
         supabase
-          .from("tournament_divisions")
-          .select(`
-            id,
-            tournament_id,
-            name,
-            age_group,
-            registration_fee_cents
-            
-          `)
-          .eq("tournament_id", tournamentId)
+        .from("tournament_divisions")
+        .select(`
+          id,
+          tournament_id,
+          name,
+          age_group,
+          classification,
+          registration_fee_cents
+        `)
+        .eq("tournament_id", tournamentId)
+        .eq("active", true)
+        .order("age_group")
           .order("age_group"),
 
         supabase
@@ -127,6 +129,26 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
           .eq("user_id", user.id)
           .eq("status", "active"),
       ])
+
+      console.log(
+        "TOURNAMENT ID:",
+        tournamentId
+      )
+      
+      console.log(
+        "TOURNAMENT RESULT:",
+        tournamentResult.data
+      )
+      
+      console.log(
+        "DIVISION RESULT:",
+        divisionResult.data
+      )
+      
+      console.log(
+        "DIVISION ERROR:",
+        divisionResult.error
+      )
 
       if (tournamentResult.error) {
         setError(tournamentResult.error.message)
@@ -247,6 +269,21 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
       ? matching
       : divisions
   }, [divisions, selectedTeam])
+
+  console.log(
+    "ALL DIVISIONS:",
+    divisions
+  )
+  
+  console.log(
+    "SELECTED TEAM:",
+    selectedTeam
+  )
+  
+  console.log(
+    "COMPATIBLE DIVISIONS:",
+    compatibleDivisions
+  )
 
   useEffect(() => {
     if (!teamId) {
@@ -499,6 +536,7 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
           <h1 className="mt-3 text-3xl font-black uppercase leading-tight tracking-[0.05em] sm:text-4xl">
             {tournament.name}
           </h1>
+          
 
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm text-scoreboard-muted">
 

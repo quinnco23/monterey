@@ -31,10 +31,13 @@ type PoolPlayer = {
   graduation_year: number | null
 }
 
-type TeamPlayer = {
-  player_id: string
+type CurrentRoster = {
+  id: string
+  name: string
+  season_year: number
+  season_type: string
+  status: string
 }
-
 
 
 export function AddPlayerPage() {
@@ -69,6 +72,23 @@ const [pageLoading, setPageLoading] =
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [currentRoster, setCurrentRoster] =
+  useState<CurrentRoster | null>(null)
+
+  const [inviteEmail, setInviteEmail] =
+  useState("")
+
+const [inviteSaving, setInviteSaving] =
+  useState(false)
+
+const [inviteError, setInviteError] =
+  useState("")
+
+  const rosterCanModify =
+  currentRoster !== null &&
+  ["draft", "open", "active"].includes(
+    currentRoster.status
+  )
 
   useEffect(() => {
     if (!organizationId || !teamId) {
@@ -78,72 +98,137 @@ const [pageLoading, setPageLoading] =
     async function loadPage() {
       setPageLoading(true)
       setError("")
-  
+    
       try {
-        const [
-          { data: teamData, error: teamError },
-          { data: playerData, error: playerError },
-          { data: rosterData, error: rosterError },
-        ] = await Promise.all([
-          supabase
-            .from("teams")
-            .select(`
-              id,
-              name,
-              organization_id,
-              age_group,
-              classification,
-              season_year
-            `)
-            .eq("id", teamId)
-            .eq(
-              "organization_id",
-              organizationId
-            )
-            .single(),
-  
-          supabase
-            .from("players")
-            .select(`
-              id,
-              first_name,
-              last_name,
-              birth_date,
-              graduation_year
-            `)
-            .eq(
-              "organization_id",
-              organizationId
-            )
-            .order("last_name")
-            .order("first_name"),
-  
-          supabase
-            .from("team_players")
-            .select("player_id")
-            .eq("team_id", teamId),
-        ])
-  
-        if (teamError) throw teamError
-        if (playerError) throw playerError
-        if (rosterError) throw rosterError
-  
+        // Load team
+        const {
+          data: teamData,
+          error: teamError,
+        } = await supabase
+          .from("teams")
+          .select(`
+            id,
+            name,
+            organization_id,
+            age_group,
+            classification,
+            season_year
+          `)
+          .eq("id", teamId)
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .single()
+    
+        if (teamError) {
+          throw teamError
+        }
+    
         setTeam(teamData)
+    
+        // Load organization player pool
+        const {
+          data: playerData,
+          error: playerError,
+        } = await supabase
+          .from("players")
+          .select(`
+            id,
+            first_name,
+            last_name,
+            birth_date,
+            graduation_year
+          `)
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .order("last_name")
+          .order("first_name")
+    
+        if (playerError) {
+          throw playerError
+        }
+    
         setPoolPlayers(playerData ?? [])
-  
-        setExistingPlayerIds(
-          new Set(
-            (rosterData ?? []).map(
-              (row) => row.player_id
+    
+        // Load team's current roster
+        const {
+          data: rosterRecord,
+          error: rosterError,
+        } = await supabase
+          .from("rosters")
+          .select(`
+            id,
+            name,
+            season_year,
+            season_type,
+            status
+          `)
+          .eq("team_id", teamId)
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .in("status", [
+            "draft",
+            "open",
+            "active",
+            "locked",
+          ])
+          .order(
+            "season_year",
+            {
+              ascending: false,
+            }
+          )
+          .limit(1)
+          .maybeSingle()
+    
+        if (rosterError) {
+          throw rosterError
+        }
+    
+        setCurrentRoster(
+          rosterRecord ?? null
+        )
+    
+        // Load players already on current roster
+        if (rosterRecord) {
+          const {
+            data: rosterPlayers,
+            error: rosterPlayersError,
+          } = await supabase
+            .from("roster_players")
+            .select("player_id")
+            .eq(
+              "roster_id",
+              rosterRecord.id
+            )
+    
+          if (rosterPlayersError) {
+            throw rosterPlayersError
+          }
+    
+          setExistingPlayerIds(
+            new Set(
+              (rosterPlayers ?? []).map(
+                (row) => row.player_id
+              )
             )
           )
-        )
+        } else {
+          setExistingPlayerIds(
+            new Set()
+          )
+        }
       } catch (err: any) {
         console.error(
           "Could not load Add Player page:",
           err
         )
-  
+    
         setError(
           err?.message ||
             "Could not load player pool."
@@ -186,32 +271,151 @@ const [pageLoading, setPageLoading] =
     setLoading(true)
     setError("")
   
-    const { error: rosterError } =
-      await supabase
-        .from("team_players")
-        .insert({
-          team_id: teamId,
-          player_id: selectedPlayer.id,
-          jersey_number:
-            jerseyNumber || null,
-          primary_position:
-            primaryPosition || null,
-          secondary_position:
-            secondaryPosition || null,
-          roster_status: "active",
-          active: true,
-        })
-  
-    if (rosterError) {
-      setError(rosterError.message)
-      setLoading(false)
+    if (!currentRoster) {
+  setError(
+    "Player was created, but this team does not have an active roster."
+  )
+  setLoading(false)
+  return
+}
+
+const { error: rosterError } =
+  await supabase
+    .from("roster_players")
+    .insert({
+      roster_id: currentRoster.id,
+      player_id: selectedPlayer.id,
+
+      invitation_status: "not_invited",
+      roster_status: "active",
+      eligibility_status: "eligible",
+
+      jersey_number:
+        jerseyNumber || null,
+
+      primary_position:
+        primaryPosition || null,
+
+      secondary_position:
+        secondaryPosition || null,
+
+      joined_at:
+        new Date().toISOString(),
+    })
+
+if (rosterError) {
+  console.error(
+    "ROSTER PLAYER ERROR:",
+    rosterError
+  )
+
+  setError(
+    rosterError.code === "23505"
+      ? "This player is already on the current roster."
+      : rosterError.message
+  )
+
+  setLoading(false)
+  return
+}
+
+navigate(
+  `/dashboard/organizations/${organizationId}/teams/${teamId}`
+)
+  }
+
+  async function handleInvitePoolPlayer() {
+    if (
+      !selectedPlayer ||
+      !currentRoster
+    ) {
       return
     }
+  
+    if (!inviteEmail.trim()) {
+      setInviteError(
+        "Enter an email address for the roster invitation."
+      )
+      return
+    }
+  
+    setInviteSaving(true)
+    setInviteError("")
+  
+    const {
+      data: invitationId,
+      error: invitationError,
+    } = await supabase.rpc(
+      "create_player_roster_invitation",
+      {
+        target_roster_id:
+          currentRoster.id,
+  
+        target_player_id:
+          selectedPlayer.id,
+  
+        invite_email:
+          inviteEmail.trim(),
+      }
+    )
+  
+    if (invitationError) {
+      console.error(
+        "PLAYER ROSTER INVITATION ERROR:",
+        invitationError
+      )
+  
+      setInviteError(
+        invitationError.message
+      )
+      setInviteSaving(false)
+      return
+    }
+  
+    if (!invitationId) {
+      setInviteError(
+        "Invitation could not be created."
+      )
+      setInviteSaving(false)
+      return
+    }
+  
+    const {
+      data: emailData,
+      error: emailError,
+    } = await supabase.functions.invoke(
+      "send-player-team-invitation",
+      {
+        body: {
+          invitationId,
+        },
+      }
+    )
+  
+    if (emailError) {
+      console.error(
+        "PLAYER INVITATION EMAIL ERROR:",
+        emailError
+      )
+  
+      setInviteError(
+        `Invitation was created, but the email could not be sent: ${emailError.message}`
+      )
+  
+      setInviteSaving(false)
+      return
+    }
+  
+    console.log(
+      "PLAYER ROSTER INVITATION SENT:",
+      emailData
+    )
   
     navigate(
       `/dashboard/organizations/${organizationId}/teams/${teamId}`
     )
   }
+  
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -278,44 +482,61 @@ const [pageLoading, setPageLoading] =
       setLoading(false)
       return
     }
-    const { error: rosterError } =
-    await supabase
-      .from("team_players")
-      .insert({
-        team_id:
-          teamId,
-  
-        player_id:
-          player.id,
-  
-        jersey_number:
-          jerseyNumber || null,
-  
-        primary_position:
-          primaryPosition || null,
-  
-        secondary_position:
-          secondaryPosition || null,
-  
-        roster_status:
-          "active",
-  
-        active:
-          true,
-      })
+    if (!currentRoster) {
+  setError(
+    "Player was created, but this team does not have an active roster."
+  )
+  setLoading(false)
+  return
+}
 
-    if (rosterError) {
-      setError(rosterError.message)
-      setLoading(false)
-      return
-    }
+const { error: rosterError } =
+  await supabase
+    .from("roster_players")
+    .insert({
+      roster_id: currentRoster.id,
+      player_id: player.id,
 
-    navigate(
-      `/dashboard/organizations/${organizationId}/teams/${teamId}`
-    )
-  }
+      invitation_status: "not_invited",
+      roster_status: "active",
+      eligibility_status: "eligible",
 
-  return (
+      jersey_number:
+        jerseyNumber || null,
+
+      primary_position:
+        primaryPosition || null,
+
+      secondary_position:
+        secondaryPosition || null,
+
+      joined_at:
+        new Date().toISOString(),
+    })
+
+if (rosterError) {
+  console.error(
+    "ROSTER PLAYER ERROR:",
+    rosterError
+  )
+
+  setError(
+    rosterError.code === "23505"
+      ? "This player is already on the current roster."
+      : rosterError.message
+  )
+
+  setLoading(false)
+  return
+}
+
+navigate(
+  `/dashboard/organizations/${organizationId}/teams/${teamId}`
+)
+}
+
+// component JSX starts here
+return (
     <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
       <section className="border-b border-scoreboard-cream/20 bg-scoreboard-green">
         <div className="mx-auto max-w-4xl px-6 py-10">
@@ -588,33 +809,108 @@ sm:justify-between
       />
     </div>
 
+
+
     {error && (
       <p className="mt-4 text-sm text-scoreboard-red">
         {error}
       </p>
     )}
 
+    
+
+   <div className="mt-5 border-t border-scoreboard-cream/20 pt-5">
+  <p className="scoreboard-label text-scoreboard-amber">
+    Roster Invitation
+  </p>
+
+  <p className="mt-2 text-sm text-scoreboard-muted">
+    Add this player directly or send a roster invitation.
+  </p>
+
+  <label className="mt-4 block">
+    <span className="scoreboard-label">
+      Invitation Email
+    </span>
+
+    <input
+      type="email"
+      value={inviteEmail}
+      onChange={(event) =>
+        setInviteEmail(event.target.value)
+      }
+      placeholder="parent@example.com"
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-scoreboard-dark
+        outline-none
+        focus:border-scoreboard-amber
+      "
+    />
+  </label>
+
+  {inviteError && (
+    <p className="mt-3 text-sm text-scoreboard-red">
+      {inviteError}
+    </p>
+  )}
+
+  <div className="mt-5 grid gap-3 sm:grid-cols-2">
     <Button
       type="button"
       disabled={loading}
       onClick={handleAddPoolPlayer}
       className="
-        mt-5
-        w-full
+        rounded-none
+        bg-scoreboard-cream
+        py-5
+        font-black
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-amber
+        disabled:opacity-40
+      "
+    >
+      {loading
+        ? "Adding..."
+        : "Add Directly"}
+    </Button>
+
+    <Button
+      type="button"
+      disabled={
+        inviteSaving ||
+        !inviteEmail.trim() ||
+        !currentRoster
+      }
+      onClick={handleInvitePoolPlayer}
+      className="
         rounded-none
         bg-scoreboard-amber
         py-5
         font-black
         uppercase
-        tracking-[0.14em]
+        tracking-[0.12em]
         text-scoreboard-dark
         hover:bg-scoreboard-cream
+        disabled:cursor-not-allowed
+        disabled:opacity-40
       "
     >
-      {loading
-        ? "Adding Player..."
-        : `Add ${player.first_name} To Roster`}
+      {inviteSaving
+        ? "Sending..."
+        : "Invite To Roster"}
     </Button>
+  </div>
+</div>
   </div>
 )}
             </div>
@@ -791,6 +1087,96 @@ sm:justify-between
             >
               {loading ? "Adding Player..." : "Add To Roster"}
             </Button>
+
+            {/* <div className="mt-5 border-t border-scoreboard-cream/20 pt-5">
+
+  <p className="scoreboard-label text-scoreboard-amber">
+    Roster Invitation
+  </p>
+
+  <p className="mt-2 text-sm text-scoreboard-muted">
+    Send an invitation instead of adding this player directly.
+  </p>
+
+  <label className="mt-4 block">
+
+    <span className="scoreboard-label">
+      Invitation Email
+    </span>
+
+    <input
+      type="email"
+      value={inviteEmail}
+      onChange={(event) =>
+        setInviteEmail(
+          event.target.value
+        )
+      }
+      placeholder="parent@example.com"
+      className="
+        mt-2
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        px-3
+        py-3
+        text-scoreboard-dark
+        outline-none
+        focus:border-scoreboard-amber
+      "
+    />
+
+  </label>
+
+  {inviteError && (
+    <p className="mt-3 text-sm text-scoreboard-red">
+      {inviteError}
+    </p>
+  )}
+
+  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+
+    <Button
+      type="button"
+      disabled={loading}
+      onClick={handleAddPoolPlayer}
+      className="
+        rounded-none
+        bg-scoreboard-cream
+        font-black
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-amber
+      "
+    >
+      Add Directly
+    </Button>
+
+    <Button
+      type="button"
+      disabled={inviteSaving}
+      onClick={handleInvitePoolPlayer}
+      className="
+        rounded-none
+        bg-scoreboard-amber
+        font-black
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-cream
+      "
+    >
+      {inviteSaving
+        ? "Sending..."
+        : "Invite To Roster"}
+    </Button>
+
+  </div>
+
+</div> */}
 
           </form>
           )}

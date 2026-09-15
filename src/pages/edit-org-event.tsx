@@ -49,11 +49,12 @@ type EventStatus =
   | "cancelled"
 
   type DivisionDraft = {
-  id?: string
-  name: string
-  age_group: string
-  classification?: string
-}
+    id?: string
+    name: string
+    age_group: string
+    classification?: string
+    active?: boolean
+  }
 
 
 
@@ -305,12 +306,14 @@ const {
 } =
   existingPublicTournamentId
     ? await supabase
-        .from("tournament_divisions")
-        .select(`
-          id,
-          name,
-          age_group
-        `)
+    .from("tournament_divisions")
+    .select(`
+      id,
+      name,
+      age_group,
+      classification,
+      active
+    `)
         .eq(
           "tournament_id",
           existingPublicTournamentId
@@ -334,6 +337,10 @@ setDivisions(
       name: division.name ?? "",
       age_group:
         division.age_group ?? "",
+      classification:
+        division.classification ?? "",
+      active:
+        division.active ?? true,
     })
   )
 )
@@ -718,63 +725,94 @@ setDivisions(
 
 /* SAVE TOURNAMENT DIVISIONS */
 
+/* SAVE TOURNAMENT DIVISIONS */
+
 if (
   nextPublicTournamentId &&
   eventType === "tournament" &&
   publiclyRegisterable
 ) {
-  const {
-    error: deleteError,
-  } =
-    await supabase
-      .from("tournament_divisions")
-      .delete()
-      .eq(
-        "tournament_id",
-        nextPublicTournamentId
-      )
+  const validDivisions =
+    divisions.filter(
+      (division) =>
+        division.age_group.trim()
+    )
 
-  if (deleteError) {
+  const divisionKeys =
+    validDivisions.map(
+      (division) => {
+        const ageGroup =
+          division.age_group
+            .trim()
+            .toLowerCase()
+
+        const divisionName =
+          (
+            division.name.trim() ||
+            `${division.age_group.trim()} Division`
+          ).toLowerCase()
+
+        return `${ageGroup}::${divisionName}`
+      }
+    )
+
+  const duplicateDivision =
+    divisionKeys.find(
+      (key, index) =>
+        divisionKeys.indexOf(key) !==
+        index
+    )
+
+  if (duplicateDivision) {
     setSaving(false)
     setError(
-      deleteError.message
+      "Each age group must have unique division names."
     )
     return
   }
 
-  const rows =
-    divisions
-      .filter(
-        (division) =>
-          division.age_group.trim()
-      )
-      .map((division) => ({
-        tournament_id:
-          nextPublicTournamentId,
+  const {
+    error: divisionSaveError,
+  } = await supabase.rpc(
+    "save_tournament_divisions",
+    {
+      target_tournament_id:
+        nextPublicTournamentId,
 
-        age_group:
-          division.age_group.trim(),
+      division_rows:
+        validDivisions.map(
+          (division) => ({
+            id:
+              division.id ?? null,
 
-        name:
-          division.name.trim() ||
-          `${division.age_group.trim()} Division`,
-      }))
+            age_group:
+              division.age_group.trim(),
 
-  if (rows.length > 0) {
-    const {
-      error: divisionError,
-    } =
-      await supabase
-        .from("tournament_divisions")
-        .insert(rows)
+            name:
+              division.name.trim(),
 
-    if (divisionError) {
-      setSaving(false)
-      setError(
-        divisionError.message
-      )
-      return
+            classification:
+              division.classification?.trim() ||
+              null,
+
+            active:
+              division.active ?? true,
+          })
+        ),
     }
+  )
+
+  if (divisionSaveError) {
+    console.error(
+      "TOURNAMENT DIVISION SAVE ERROR:",
+      divisionSaveError
+    )
+
+    setSaving(false)
+    setError(
+      divisionSaveError.message
+    )
+    return
   }
 }
 

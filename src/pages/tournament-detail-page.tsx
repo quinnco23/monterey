@@ -550,14 +550,17 @@ export function TournamentDetailPage() {
 
               <div className="mt-5 space-y-2">
 
-                {divisions.map((division) => (
-                  <div
-                    key={division.id}
-                    className="border-t border-scoreboard-cream/15 pt-3 text-sm"
-                  >
-                    {division.name}
-                  </div>
-                ))}
+              {divisions.map((division) => (
+  <div key={division.id}>
+    <p className="font-black uppercase">
+      {division.age_group}
+    </p>
+
+    <p className="text-sm text-scoreboard-muted">
+      {division.name}
+    </p>
+  </div>
+))}
 
               </div>
 

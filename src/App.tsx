@@ -80,6 +80,21 @@ import { StaffRegisterPage } from "./pages/staff-register-page"
 import { AcceptTeamStaffInvitationPage } from "./pages/accept-team-staff-invitation-page"
 import { InvitePlayerToTeamPage } from "./pages/invite-player-team-page"
 import { AcceptPlayerTeamInvitationPage } from "./pages/accept-player-team-invitation-page"
+import { PlayerInvitationPage } from "./pages/player-invitation-page"
+import { TournamentAdminPoolsPage } from "./pages/tournament-admin-pools-page"
+import {
+  TournamentRosterPage,
+} from "@/pages/TournamentRosterPage"
+import {
+  TournamentAdminRegistrationsPage,
+} from "@/pages/TournamentAdminRegistrationsPage"
+import {
+  TournamentAdminRosterReviewPage,
+} from "@/pages/TournamentAdminRosterReviewPage"
+
+import { TournamentAdminSchedulePage } from "@/pages/TournamentAdminSchedulePage"
+
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -217,6 +232,13 @@ export default function App() {
   />
 </Route>
 
+<Route
+  path="/player/invitations/:invitationId"
+  element={
+    <PlayerInvitationPage />
+  }
+/>
+
             {/* ORGANIZATION */}
 
             <Route
@@ -317,6 +339,18 @@ export default function App() {
               element={<EditOrganizationEventPage />}
             />
 
+<Route
+  path="/dashboard/tournaments/:tournamentId/pools"
+  element={
+    <TournamentAdminPoolsPage />
+  }
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/schedule"
+  element={<TournamentAdminSchedulePage />}
+/>
+
             {/* RESERVATIONS */}
 
             <Route
@@ -343,6 +377,13 @@ export default function App() {
           </Route>
 
           <Route
+  path="/dashboard/registrations/:registrationId/roster"
+  element={
+    <TournamentRosterPage />
+  }
+/>
+
+          <Route
   path="/guardian"
   element={<GuardianDashboardPage />}
 />
@@ -360,6 +401,19 @@ export default function App() {
 <Route
   path="/dashboard/organizations/:organizationId/players/:playerId/invite"
   element={<InvitePlayerToTeamPage />}
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/registrations"
+  element={
+    <TournamentAdminRegistrationsPage />
+  }
+/>
+<Route
+  path="/dashboard/tournaments/:tournamentId/registrations/:registrationId/roster"
+  element={
+    <TournamentAdminRosterReviewPage />
+  }
 />
 
           {/* =========================

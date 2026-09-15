@@ -37,6 +37,8 @@ type Team = {
 
 type Registration = {
   id: string
+  registration_id: string | null
+
   tournament_id: string
   division_id: string
   team_id: string
@@ -69,6 +71,8 @@ type Registration = {
 export function TournamentRegistrationSuccessPage() {
   const { user } = useAuth()
   const location = useLocation()
+  const registrationId =
+  location.state?.registrationId
 
   const state =
     location.state as LocationState | null
@@ -187,6 +191,7 @@ export function TournamentRegistrationSuccessPage() {
           .from("tournament_teams")
           .select(`
             id,
+            registration_id,
             tournament_id,
             division_id,
             team_id,
@@ -308,6 +313,8 @@ export function TournamentRegistrationSuccessPage() {
           <h1 className="mt-4 text-4xl font-black uppercase tracking-[0.06em] sm:text-5xl">
             Team Registered
           </h1>
+
+          
 
           <p className="mt-4 max-w-2xl text-sm leading-7 text-scoreboard-muted">
             Your tournament registration
@@ -458,6 +465,34 @@ export function TournamentRegistrationSuccessPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
+
+{latestRegistration.registration_id && (
+  <Link
+    to={`/dashboard/registrations/${latestRegistration.registration_id}/roster`}
+    className="
+      mt-4
+      inline-flex
+      min-h-11
+      items-center
+      justify-center
+      gap-3
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-5
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.10em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-cream
+    "
+  >
+    Build Tournament Roster
+
+    <ArrowRight className="h-4 w-4" />
+  </Link>
+)}
 
             </div>
           )}
@@ -691,6 +726,31 @@ export function TournamentRegistrationSuccessPage() {
 
                         <ArrowRight className="h-4 w-4" />
                       </Link>
+
+                      {registration.registration_id && (
+  <Link
+    to={`/dashboard/registrations/${registration.registration_id}/roster`}
+    className="
+      mt-3
+      flex
+      items-center
+      justify-between
+      border-t
+      border-scoreboard-cream/15
+      pt-4
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.10em]
+      text-scoreboard-amber
+      hover:text-scoreboard-cream
+    "
+  >
+    Tournament Roster
+
+    <ArrowRight className="h-4 w-4" />
+  </Link>
+)}
 
                     </article>
                   )
