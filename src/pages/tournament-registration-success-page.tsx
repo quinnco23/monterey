@@ -727,30 +727,7 @@ export function TournamentRegistrationSuccessPage() {
                         <ArrowRight className="h-4 w-4" />
                       </Link>
 
-                      {registration.registration_id && (
-  <Link
-    to={`/dashboard/registrations/${registration.registration_id}/roster`}
-    className="
-      mt-3
-      flex
-      items-center
-      justify-between
-      border-t
-      border-scoreboard-cream/15
-      pt-4
-      text-xs
-      font-black
-      uppercase
-      tracking-[0.10em]
-      text-scoreboard-amber
-      hover:text-scoreboard-cream
-    "
-  >
-    Tournament Roster
-
-    <ArrowRight className="h-4 w-4" />
-  </Link>
-)}
+                      
 
                     </article>
                   )

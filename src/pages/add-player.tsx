@@ -466,32 +466,32 @@ navigate(
       organizationId,
     })
     
-    const {
-      data: player,
-      error: playerError,
-    } = await supabase
-      .from("players")
-      .insert({
-        organization_id: organizationId,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        birth_date: birthDate || null,
-      })
-      .select()
-      .single()
-    
-    if (playerError) {
-      console.error("PLAYER CREATE ERROR:", {
-        message: playerError.message,
-        details: playerError.details,
-        hint: playerError.hint,
-        code: playerError.code,
-      })
-    
-      setError(playerError.message)
-      setLoading(false)
-      return
-    }
+    const playerId = crypto.randomUUID()
+
+const {
+  error: playerError,
+} = await supabase
+  .from("players")
+  .insert({
+    id: playerId,
+    organization_id: organizationId,
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    birth_date: birthDate || null,
+  })
+
+if (playerError) {
+  console.error("PLAYER CREATE ERROR:", {
+    message: playerError.message,
+    details: playerError.details,
+    hint: playerError.hint,
+    code: playerError.code,
+  })
+
+  setError(playerError.message)
+  setLoading(false)
+  return
+}
     if (!currentRoster) {
   setError(
     "Player was created, but this team does not have an active roster."
@@ -505,7 +505,7 @@ const { error: rosterError } =
     .from("roster_players")
     .insert({
       roster_id: currentRoster.id,
-      player_id: player.id,
+      player_id: playerId,
 
       invitation_status: "not_invited",
       roster_status: "active",

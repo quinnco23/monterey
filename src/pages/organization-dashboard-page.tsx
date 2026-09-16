@@ -590,18 +590,7 @@ const upcomingSchedule =
                   
                 </Link>
 
-                 <Button
-  type="button"
-  onClick={testAcceptGuardianInvite}
->
-  Test Guardian Invite
-</Button>
-<Button
-  type="button"
-  onClick={checkCurrentSession}
->
-  Check Session
-</Button> 
+            
 
                 
   
