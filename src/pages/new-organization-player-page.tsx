@@ -41,72 +41,118 @@ export default function NewOrganizationPlayerPage() {
     event: React.FormEvent
   ) {
     event.preventDefault()
-
+  
     if (!organizationId) {
       alert(
         "Organization could not be identified."
       )
       return
     }
-
+  
     if (!form.firstName.trim()) {
       alert("Enter a first name.")
       return
     }
-
+  
     if (!form.lastName.trim()) {
       alert("Enter a last name.")
       return
     }
-
+  
     try {
       setSaving(true)
-
+  
       const {
-        data,
-        error,
-      } = await supabase
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+  
+      if (authError) {
+        throw authError
+      }
+  
+      if (!user) {
+        throw new Error(
+          "You must be signed in to create a player."
+        )
+      }
+  
+      console.error(
+        "NEW PLAYER AUTH DEBUG:",
+        {
+          authUserId: user.id,
+          authEmail: user.email,
+          organizationId,
+        }
+      )
+  
+      const {
+        data: permissionData,
+        error: permissionError,
+      } = await supabase.rpc(
+        "debug_can_manage_org",
+        {
+          target_organization_id:
+            organizationId,
+        }
+      )
+  
+      console.error(
+        "NEW PLAYER PERMISSION DEBUG:",
+        JSON.stringify(permissionData)
+      )
+  
+      if (permissionError) {
+        throw permissionError
+      }
+  
+      const { error } = await supabase
         .from("players")
         .insert({
           organization_id:
             organizationId,
-
+  
           first_name:
             form.firstName.trim(),
-
+  
           last_name:
             form.lastName.trim(),
-
+  
           birth_date:
             form.birthDate || null,
-
+  
           graduation_year:
             form.graduationYear
               ? Number(
                   form.graduationYear
                 )
               : null,
-
+  
           city:
-            form.city.trim() ||
-            null,
-
+            form.city.trim() || null,
+  
           state:
-            form.state.trim() ||
-            null,
+            form.state.trim() || null,
         })
-        .select()
-        .single()
-
+  
       if (error) {
+        console.error(
+          "NEW PLAYER INSERT ERROR:",
+          {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          }
+        )
+  
         throw error
       }
-
+  
       console.log(
-        "PLAYER CREATED:",
-        data
+        "PLAYER CREATED SUCCESSFULLY"
       )
-
+  
       navigate(
         `/dashboard/organizations/${organizationId}/players`
       )
@@ -115,7 +161,7 @@ export default function NewOrganizationPlayerPage() {
         "Could not create player:",
         error
       )
-
+  
       alert(
         error?.message ||
           "Could not create player."

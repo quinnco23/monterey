@@ -450,6 +450,7 @@ navigate(
 
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser()
     
     if (!user) {
@@ -457,27 +458,36 @@ navigate(
       setLoading(false)
       return
     }
-
+    
+    console.error("AUTH DEBUG:", {
+      authError,
+      authUserId: user.id,
+      authEmail: user.email,
+      organizationId,
+    })
+    
     const {
       data: player,
       error: playerError,
     } = await supabase
-    .from("players")
-
-    
-    .insert({
-      organization_id: organizationId,
-    
-      first_name: firstName.trim(),
-    
-      last_name: lastName.trim(),
-    
-      birth_date: birthDate || null,
-    })
+      .from("players")
+      .insert({
+        organization_id: organizationId,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        birth_date: birthDate || null,
+      })
       .select()
       .single()
-
+    
     if (playerError) {
+      console.error("PLAYER CREATE ERROR:", {
+        message: playerError.message,
+        details: playerError.details,
+        hint: playerError.hint,
+        code: playerError.code,
+      })
+    
       setError(playerError.message)
       setLoading(false)
       return
