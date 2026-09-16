@@ -69,6 +69,8 @@ const [insuranceAttested, setInsuranceAttested] = useState(false)
 const [termsAccepted, setTermsAccepted] = useState(false)
 const [waiverAccepted, setWaiverAccepted] = useState(false)
 const [eligibilityAttested, setEligibilityAttested] = useState(false)
+const allowPaymentBypass =
+  import.meta.env.DEV
 
   
 
@@ -386,8 +388,8 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
       
         status: "submitted",
       
-        // FAKE PAYMENT FOR NOW
-        payment_status: "paid",
+        // PAYMENT 
+        payment_status: "unpaid",
         registration_fee_cents:
           selectedDivision.registration_fee_cents,
       
@@ -417,7 +419,7 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
       
         // REGISTRATION / PAYMENT TIMES
         submitted_at: now,
-        paid_at: now,
+        paid_at: null,
       })
       .select("id")
       .single()
@@ -427,6 +429,8 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
       setError(registrationError.message)
       return
     }
+
+    
   
     // 2. Create the actual tournament participant
     const { error: teamEntryError } = await supabase
@@ -451,26 +455,277 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
       setError(teamEntryError.message)
       return
     }
+
+    const {
+      data: checkoutData,
+      error: checkoutError,
+    } = await supabase.functions.invoke(
+      "create-tournament-checkout",
+      {
+        body: {
+          registrationId:
+            registration.id,
+        },
+      }
+    )
+    
+    if (checkoutError) {
+      console.error(
+        "CHECKOUT ERROR:",
+        checkoutError
+      )
+    
+      setSaving(false)
+    
+      setError(
+        "Registration was created, but checkout could not be started."
+      )
+    
+      return
+    }
+    
+    if (!checkoutData?.url) {
+      setSaving(false)
+    
+      setError(
+        "Stripe checkout URL was not returned."
+      )
+    
+      return
+    }
   
     setSaving(false)
   
     // 3. Registration complete
+    window.location.href = checkoutData.url
+    return
+  }
+
+  async function handleTestBypassPayment() {
+    if (
+      !tournamentId ||
+      !user ||
+      !selectedTeam ||
+      !selectedDivision
+    ) {
+      setError("Select a team and division.")
+      return
+    }
+  
+    if (
+      !insuranceAttested ||
+      !eligibilityAttested ||
+      !termsAccepted ||
+      !waiverAccepted
+    ) {
+      setError(
+        "Please complete all insurance, eligibility, and agreement confirmations."
+      )
+      return
+    }
+  
+    setSaving(true)
+    setError("")
+  
+    // Make sure the team is not already entered.
+    const {
+      data: existingRegistration,
+      error: lookupError,
+    } = await supabase
+      .from("tournament_teams")
+      .select(`
+        id,
+        status
+      `)
+      .eq(
+        "tournament_id",
+        tournamentId
+      )
+      .eq(
+        "division_id",
+        selectedDivision.id
+      )
+      .eq(
+        "team_id",
+        selectedTeam.id
+      )
+      .maybeSingle()
+  
+    if (lookupError) {
+      setSaving(false)
+      setError(lookupError.message)
+      return
+    }
+  
+    if (existingRegistration) {
+      setSaving(false)
+      setError(
+        "This team is already registered for that tournament division."
+      )
+      return
+    }
+  
+    const now =
+      new Date().toISOString()
+  
+    // Create registration but leave payment UNPAID.
+    const {
+      data: registration,
+      error: registrationError,
+    } = await supabase
+      .from("tournament_registrations")
+      .insert({
+        tournament_id:
+          tournamentId,
+  
+        division_id:
+          selectedDivision.id,
+  
+        team_id:
+          selectedTeam.id,
+  
+        organization_id:
+          selectedTeam.organization_id,
+  
+        registered_by_user_id:
+          user.id,
+  
+        status:
+          "submitted",
+  
+        payment_status:
+          "unpaid",
+  
+        registration_fee_cents:
+          selectedDivision.registration_fee_cents,
+  
+        insurance_provider:
+          insuranceProvider.trim() ||
+          null,
+  
+        insurance_policy_number:
+          insurancePolicyNumber.trim() ||
+          null,
+  
+        insurance_expiration:
+          insuranceExpiration ||
+          null,
+  
+        insurance_attested:
+          true,
+  
+        insurance_attested_at:
+          now,
+  
+        eligibility_attested:
+          true,
+  
+        eligibility_attested_at:
+          now,
+  
+        terms_accepted:
+          true,
+  
+        terms_accepted_at:
+          now,
+  
+        waiver_accepted:
+          true,
+  
+        waiver_accepted_at:
+          now,
+  
+        submitted_at:
+          now,
+  
+        paid_at:
+          null,
+      })
+      .select("id")
+      .single()
+  
+    if (registrationError) {
+      setSaving(false)
+      setError(
+        registrationError.message
+      )
+      return
+    }
+  
+    // Create tournament participant.
+    const {
+      error: teamEntryError,
+    } = await supabase
+      .from("tournament_teams")
+      .insert({
+        tournament_id:
+          tournamentId,
+  
+        division_id:
+          selectedDivision.id,
+  
+        team_id:
+          selectedTeam.id,
+  
+        display_name:
+          selectedTeam.name,
+  
+        city:
+          selectedTeam.city ?? null,
+  
+        state:
+          selectedTeam.state ?? null,
+  
+        status:
+          "pending",
+  
+        notes:
+          notes.trim() || null,
+  
+        registration_id:
+          registration.id,
+      })
+  
+    if (teamEntryError) {
+      setSaving(false)
+      setError(
+        teamEntryError.message
+      )
+      return
+    }
+  
+    setSaving(false)
+  
     navigate(
       "/dashboard/registrations/success",
       {
         replace: true,
+  
         state: {
-          registrationId: registration.id,
+          registrationId:
+            registration.id,
+  
           tournamentId,
-          teamId: selectedTeam.id,
-          divisionId: selectedDivision.id,
-          paymentStatus: "paid",
+  
+          teamId:
+            selectedTeam.id,
+  
+          divisionId:
+            selectedDivision.id,
+  
+          paymentStatus:
+            "unpaid",
+  
           registrationFeeCents:
             selectedDivision.registration_fee_cents,
+  
+          paymentBypassed:
+            true,
         },
       }
     )
   }
+  
 
   if (loading) {
     return (
@@ -986,6 +1241,36 @@ const [eligibilityAttested, setEligibilityAttested] = useState(false)
                   ? "Processing..."
                   : "Pay & Register"}
               </Button>
+
+              {allowPaymentBypass && (
+  <Button
+    type="button"
+    disabled={
+      saving ||
+      teams.length === 0
+    }
+    onClick={
+      handleTestBypassPayment
+    }
+    className="
+      mt-3
+      w-full
+      rounded-none
+      border
+      border-scoreboard-amber
+      bg-transparent
+      py-5
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-amber
+      hover:bg-scoreboard-amber
+      hover:text-scoreboard-dark
+    "
+  >
+    Test — Bypass Payment
+  </Button>
+)}
 
 
 
