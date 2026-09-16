@@ -462,18 +462,18 @@ navigate(
       data: player,
       error: playerError,
     } = await supabase
-      .from("players")
-      .insert({
-        organization_id: organizationId,
+    .from("players")
+
     
-        created_by_user_id: user.id,
+    .insert({
+      organization_id: organizationId,
     
-        first_name: firstName.trim(),
+      first_name: firstName.trim(),
     
-        last_name: lastName.trim(),
+      last_name: lastName.trim(),
     
-        birth_date: birthDate || null,
-      })
+      birth_date: birthDate || null,
+    })
       .select()
       .single()
 
