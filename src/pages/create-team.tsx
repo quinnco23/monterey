@@ -20,26 +20,30 @@ export function CreateTeamPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
+  
     if (!organizationId) return
-
+  
     setLoading(true)
     setError("")
-
+  
     const slug = name
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
-
-    const { data, error } = await supabase
+  
+    const {
+      data: team,
+      error: teamError,
+    } = await supabase
       .from("teams")
       .insert({
         organization_id: organizationId,
         name,
         slug,
         age_group: ageGroup,
-        classification: classification.toLowerCase(),
+        classification:
+          classification.toLowerCase(),
         season_year: seasonYear,
         city,
         state,
@@ -47,15 +51,53 @@ export function CreateTeamPage() {
       })
       .select()
       .single()
-
-    if (error) {
-      setError(error.message)
+  
+    if (teamError) {
+      setError(teamError.message)
       setLoading(false)
       return
     }
-
+  
+    const {
+      error: rosterError,
+    } = await supabase
+      .from("rosters")
+      .insert({
+        organization_id:
+          organizationId,
+  
+        team_id:
+          team.id,
+  
+        name:
+          `${seasonYear} Season`,
+  
+        season_year:
+          seasonYear,
+  
+        season_type:
+          "year_round",
+  
+        status:
+          "active",
+      })
+  
+    if (rosterError) {
+      console.error(
+        "DEFAULT ROSTER CREATE ERROR:",
+        rosterError
+      )
+  
+      setError(
+        `Team was created, but its default roster could not be created: ${rosterError.message}`
+      )
+  
+      setLoading(false)
+      return
+    }
+  
     navigate(
-      `/dashboard/organizations/${organizationId}/teams/${data.id}`
+      `/dashboard/organizations/${organizationId}/teams/${team.id}`
     )
   }
 
