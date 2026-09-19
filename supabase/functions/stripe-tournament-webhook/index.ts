@@ -42,7 +42,6 @@ Deno.serve(async (req) => {
   }
 
   /*
-   * IMPORTANT:
    * Stripe signature verification requires
    * the RAW request body.
    *
@@ -87,8 +86,7 @@ Deno.serve(async (req) => {
   try {
     switch (event.type) {
       /*
-       * Normal card Checkout payments will
-       * normally arrive here.
+       * Normal card Checkout payment.
        */
       case "checkout.session.completed": {
         const session =
@@ -97,9 +95,6 @@ Deno.serve(async (req) => {
         /*
          * Don't mark it paid unless Stripe
          * actually reports payment as paid.
-         *
-         * This matters if we later enable
-         * asynchronous payment methods.
          */
         if (
           session.payment_status !==
@@ -123,8 +118,7 @@ Deno.serve(async (req) => {
 
 
       /*
-       * Useful later if Stripe Checkout allows
-       * delayed/asynchronous payment methods.
+       * Delayed/asynchronous payment success.
        */
       case "checkout.session.async_payment_succeeded": {
         const session =
@@ -138,6 +132,9 @@ Deno.serve(async (req) => {
       }
 
 
+      /*
+       * Delayed/asynchronous payment failure.
+       */
       case "checkout.session.async_payment_failed": {
         const session =
           event.data.object as Stripe.Checkout.Session
@@ -178,10 +175,18 @@ Deno.serve(async (req) => {
           throw failedUpdateError
         }
 
+        console.log(
+          "REGISTRATION PAYMENT FAILED:",
+          registrationId
+        )
+
         break
       }
 
 
+      /*
+       * Abandoned / expired checkout.
+       */
       case "checkout.session.expired": {
         const session =
           event.data.object as Stripe.Checkout.Session
@@ -195,9 +200,8 @@ Deno.serve(async (req) => {
         }
 
         /*
-         * An expired checkout isn't a successful
-         * payment. We move pending back to unpaid
-         * so the team can try again later.
+         * Move pending back to unpaid so
+         * checkout can be attempted again.
          */
         const {
           error: expiredUpdateError,
@@ -221,6 +225,11 @@ Deno.serve(async (req) => {
         if (expiredUpdateError) {
           throw expiredUpdateError
         }
+
+        console.log(
+          "REGISTRATION CHECKOUT EXPIRED:",
+          registrationId
+        )
 
         break
       }
@@ -278,9 +287,9 @@ async function markRegistrationPaid(
 
 
   /*
-   * Load the registration before updating it.
-   * This lets us verify Stripe charged the
-   * expected amount.
+   * Load the registration and team information.
+   *
+   * This is our trusted DB snapshot.
    */
   const {
     data: registration,
@@ -291,8 +300,18 @@ async function markRegistrationPaid(
     )
     .select(`
       id,
+      tournament_id,
+      division_id,
+      team_id,
+      organization_id,
       registration_fee_cents,
-      payment_status
+      payment_status,
+
+      teams (
+        name,
+        city,
+        state
+      )
     `)
     .eq(
       "id",
@@ -317,7 +336,7 @@ async function markRegistrationPaid(
 
 
   /*
-   * Verify Stripe's amount against our
+   * Verify Stripe amount against our
    * trusted registration snapshot.
    */
   if (
@@ -328,8 +347,10 @@ async function markRegistrationPaid(
       "PAYMENT AMOUNT MISMATCH:",
       {
         registrationId,
+
         expected:
           registration.registration_fee_cents,
+
         stripeAmount:
           session.amount_total,
       }
@@ -361,6 +382,12 @@ async function markRegistrationPaid(
   }
 
 
+  /*
+   * Mark registration paid.
+   *
+   * Only the Stripe webhook should perform
+   * this state transition.
+   */
   const {
     error: updateError,
   } = await supabaseAdmin
@@ -403,11 +430,193 @@ async function markRegistrationPaid(
     "REGISTRATION PAID:",
     {
       registrationId,
+
       checkoutSessionId:
         session.id,
+
       paymentIntentId,
+
       amount:
         session.amount_total,
+    }
+  )
+
+
+  /*
+   * =====================================================
+   * CREATE TOURNAMENT PARTICIPANT
+   * =====================================================
+   *
+   * Payment has now been verified.
+   *
+   * Only now should this team become a
+   * tournament participant.
+   *
+   * First check whether Stripe already caused
+   * this participant to be created.
+   *
+   * Webhooks can be delivered more than once,
+   * so this needs to be idempotent.
+   */
+  const {
+    data: existingTournamentTeam,
+    error: existingTeamError,
+  } = await supabaseAdmin
+    .from(
+      "tournament_teams"
+    )
+    .select(`
+      id,
+      registration_id
+    `)
+    .eq(
+      "tournament_id",
+      registration.tournament_id
+    )
+    .eq(
+      "division_id",
+      registration.division_id
+    )
+    .eq(
+      "team_id",
+      registration.team_id
+    )
+    .maybeSingle()
+
+
+  if (existingTeamError) {
+    console.error(
+      "TOURNAMENT TEAM LOOKUP ERROR:",
+      existingTeamError
+    )
+
+    throw existingTeamError
+  }
+
+
+  /*
+   * Already created.
+   *
+   * This can happen when Stripe retries a
+   * webhook. Do not create a duplicate.
+   */
+  if (existingTournamentTeam) {
+    console.log(
+      "TOURNAMENT TEAM ALREADY EXISTS:",
+      {
+        tournamentTeamId:
+          existingTournamentTeam.id,
+
+        registrationId:
+          registration.id,
+
+        teamId:
+          registration.team_id,
+      }
+    )
+
+    return
+  }
+
+
+  /*
+   * Supabase relation joins may be typed as
+   * an object or array depending on generated
+   * relationship metadata, so normalize it.
+   */
+  const teamRelation =
+    registration.teams
+
+  const team =
+    Array.isArray(teamRelation)
+      ? teamRelation[0]
+      : teamRelation
+
+
+  /*
+   * Create the actual tournament participant.
+   *
+   * Status remains pending because payment
+   * success does NOT equal tournament approval.
+   *
+   * Platform admin still reviews registration.
+   */
+  const {
+    data: tournamentTeam,
+    error: teamEntryError,
+  } = await supabaseAdmin
+    .from(
+      "tournament_teams"
+    )
+    .insert({
+      tournament_id:
+        registration.tournament_id,
+
+      division_id:
+        registration.division_id,
+
+      team_id:
+        registration.team_id,
+
+      display_name:
+        team?.name ??
+        "Team",
+
+      city:
+        team?.city ??
+        null,
+
+      state:
+        team?.state ??
+        null,
+
+      status:
+        "pending",
+
+      registration_id:
+        registration.id,
+    })
+    .select(`
+      id,
+      tournament_id,
+      division_id,
+      team_id,
+      registration_id,
+      status
+    `)
+    .single()
+
+
+  if (teamEntryError) {
+    console.error(
+      "TOURNAMENT TEAM CREATE ERROR:",
+      teamEntryError
+    )
+
+    throw teamEntryError
+  }
+
+
+  console.log(
+    "TOURNAMENT PARTICIPANT CREATED:",
+    {
+      tournamentTeamId:
+        tournamentTeam.id,
+
+      registrationId:
+        registration.id,
+
+      teamId:
+        registration.team_id,
+
+      tournamentId:
+        registration.tournament_id,
+
+      divisionId:
+        registration.division_id,
+
+      status:
+        tournamentTeam.status,
     }
   )
 }

@@ -33,4 +33,4 @@ entrypoint = "./functions/send-player-team-invitation/index.ts"
 # static_files = [ "./functions/send-player-team-invitation/*.html" ]
 
 [functions.stripe-tournament-webhook]
-verify_jwt = false
+verify_jwt = false 

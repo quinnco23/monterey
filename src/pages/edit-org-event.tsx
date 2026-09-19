@@ -54,6 +54,7 @@ type EventStatus =
     age_group: string
     classification?: string
     active?: boolean
+    registration_fee_cents: number
   }
 
 
@@ -312,12 +313,14 @@ const {
       name,
       age_group,
       classification,
-      active
+      active,
+      registration_fee_cents
     `)
         .eq(
           "tournament_id",
           existingPublicTournamentId
         )
+        .eq("active", true)
         .order("age_group")
     : {
         data: [],
@@ -341,6 +344,9 @@ setDivisions(
         division.classification ?? "",
       active:
         division.active ?? true,
+
+      registration_fee_cents:
+        division.registration_fee_cents ?? 0,
     })
   )
 )
@@ -779,24 +785,27 @@ if (
       target_tournament_id:
         nextPublicTournamentId,
 
-      division_rows:
+        division_rows:
         validDivisions.map(
           (division) => ({
             id:
               division.id ?? null,
-
+      
             age_group:
               division.age_group.trim(),
-
+      
             name:
               division.name.trim(),
-
+      
             classification:
               division.classification?.trim() ||
               null,
-
+      
             active:
               division.active ?? true,
+      
+            registration_fee_cents:
+              division.registration_fee_cents,
           })
         ),
     }
@@ -1430,7 +1439,7 @@ updated_at:
               </div>
             )}
 
-            {eventType === "tournament" && (
+{eventType === "tournament" && (
   <div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
 
     <p className="scoreboard-label text-scoreboard-amber">
@@ -1438,7 +1447,7 @@ updated_at:
     </p>
 
     <p className="mt-2 text-sm text-scoreboard-muted">
-      Add the age groups teams can register for.
+      Add the age groups teams can register for and set the entry fee.
     </p>
 
     <div className="mt-5 space-y-4">
@@ -1446,9 +1455,13 @@ updated_at:
       {divisions.map((division, index) => (
         <div
           key={division.id ?? index}
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+          className="
+            grid
+            gap-3
+            sm:grid-cols-[1fr_1fr_160px_auto]
+          "
         >
-
+          {/* AGE GROUP */}
           <input
             value={division.age_group}
             onChange={(e) => {
@@ -1474,6 +1487,7 @@ updated_at:
             "
           />
 
+          {/* DIVISION NAME */}
           <input
             value={division.name}
             onChange={(e) => {
@@ -1499,6 +1513,58 @@ updated_at:
             "
           />
 
+          {/* ENTRY FEE */}
+          <div className="relative">
+            <span
+              className="
+                pointer-events-none
+                absolute
+                left-3
+                top-3
+                text-scoreboard-dark/60
+              "
+            >
+              $
+            </span>
+
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={
+                division.registration_fee_cents / 100
+              }
+              onChange={(e) => {
+                const next = [...divisions]
+
+                next[index] = {
+                  ...next[index],
+
+                  registration_fee_cents:
+                    Math.round(
+                      Number(e.target.value || 0) *
+                        100
+                    ),
+                }
+
+                setDivisions(next)
+              }}
+              placeholder="750"
+              className="
+                w-full
+                rounded-none
+                border
+                border-scoreboard-cream/30
+                bg-scoreboard-cream
+                py-3
+                pl-7
+                pr-3
+                text-scoreboard-dark
+              "
+            />
+          </div>
+
+          {/* REMOVE */}
           <button
             type="button"
             onClick={() =>
@@ -1521,7 +1587,6 @@ updated_at:
           >
             Remove
           </button>
-
         </div>
       ))}
 
@@ -1535,6 +1600,8 @@ updated_at:
           {
             name: "",
             age_group: "",
+            registration_fee_cents: 0,
+            active: true,
           },
         ])
       }

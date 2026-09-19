@@ -131,6 +131,7 @@ export function TournamentScheduleGamePage() {
             age_group
           `)
           .eq("tournament_id", tournamentId)
+          .eq("active", true)
           .order("age_group"),
 
         supabase

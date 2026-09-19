@@ -95,6 +95,13 @@ import {
 import { TournamentAdminSchedulePage } from "@/pages/TournamentAdminSchedulePage"
 
 
+import { TournamentRegistrationPaymentSuccessPage } from "./pages/TournamentRegistrationPaymentSuccessPage"
+
+import { TeamInsurancePage } from "./pages/team-insurance-page"
+import { PlatformInsuranceReviewPage } from "./pages/team-insurance-review-page"
+
+
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -339,17 +346,9 @@ export default function App() {
               element={<EditOrganizationEventPage />}
             />
 
-<Route
-  path="/dashboard/tournaments/:tournamentId/pools"
-  element={
-    <TournamentAdminPoolsPage />
-  }
-/>
 
-<Route
-  path="/dashboard/tournaments/:tournamentId/schedule"
-  element={<TournamentAdminSchedulePage />}
-/>
+
+
 
             {/* RESERVATIONS */}
 
@@ -365,25 +364,27 @@ export default function App() {
 
             {/* TOURNAMENT REGISTRATION */}
 
-            <Route
-              path="/tournaments/:tournamentId/register"
-              element={<TournamentRegistrationPage />}
-            />
-
-            <Route
-              path="/dashboard/registrations/success"
-              element={<TournamentRegistrationSuccessPage />}
-            />
-          </Route>
-
-          <Route
-  path="/dashboard/registrations/:registrationId/roster"
-  element={
-    <TournamentRosterPage />
-  }
+<Route
+  path="/tournaments/:tournamentId/register"
+  element={<TournamentRegistrationPage />}
 />
 
-          <Route
+<Route
+  path="/dashboard/registrations/success"
+  element={<TournamentRegistrationSuccessPage />}
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/registration/:registrationId/payment-success"
+  element={<TournamentRegistrationPaymentSuccessPage />}
+/>
+
+<Route
+  path="/dashboard/registrations/:registrationId/roster"
+  element={<TournamentRosterPage />}
+/>
+
+<Route
   path="/guardian"
   element={<GuardianDashboardPage />}
 />
@@ -404,17 +405,24 @@ export default function App() {
 />
 
 <Route
-  path="/dashboard/tournaments/:tournamentId/registrations"
+  path="/dashboard/organizations/:organizationId/teams/:teamId/insurance"
   element={
-    <TournamentAdminRegistrationsPage />
+    <TeamInsurancePage />
   }
 />
+
 <Route
-  path="/dashboard/tournaments/:tournamentId/registrations/:registrationId/roster"
+  path="/dashboard/platform/insurance"
   element={
-    <TournamentAdminRosterReviewPage />
+    <PlatformInsuranceReviewPage />
   }
 />
+
+</Route>
+
+
+
+
 
           {/* =========================
               PLATFORM ADMIN ROUTES
@@ -446,7 +454,7 @@ export default function App() {
               element={<AdminTournamentPage />}
             />
 
-            <Route
+            {/* <Route
               path="/dashboard/tournaments/:tournamentId/schedule"
               element={<TournamentSchedulePage />}
             />
@@ -454,7 +462,27 @@ export default function App() {
             <Route
               path="/dashboard/tournaments/:tournamentId/schedule/new"
               element={<TournamentScheduleGamePage />}
-            />
+            /> */}
+<Route
+  path="/dashboard/tournaments/:tournamentId/pools"
+  element={<TournamentAdminPoolsPage />}
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/schedule"
+  element={<TournamentAdminSchedulePage />}
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/registrations"
+  element={<TournamentAdminRegistrationsPage />}
+/>
+
+<Route
+  path="/dashboard/tournaments/:tournamentId/registrations/:registrationId/roster"
+  element={<TournamentAdminRosterReviewPage />}
+/>
+
           </Route>
         </Routes>
       </AuthProvider>

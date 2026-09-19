@@ -51,16 +51,16 @@ export function CreateTournamentPage() {
    */
   useEffect(() => {
     let cancelled = false
-
+  
     async function loadOrganizations() {
       setLoadingOrganizations(true)
       setError("")
-
+  
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser()
-
+  
       if (userError) {
         if (!cancelled) {
           setError(userError.message)
@@ -68,7 +68,7 @@ export function CreateTournamentPage() {
         }
         return
       }
-
+  
       if (!user) {
         if (!cancelled) {
           setError("You must be signed in to create a tournament.")
@@ -76,121 +76,49 @@ export function CreateTournamentPage() {
         }
         return
       }
-
+  
       /*
-       * Check Platform Admin status.
+       * This page is protected by AdminRoute.
+       * Platform administrators may create a tournament
+       * for any organization.
        */
       const {
-        data: platformAdmin,
-        error: platformAdminError,
+        data: organizationData,
+        error: organizationError,
       } = await supabase
-        .from("platform_admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle()
-
-      if (platformAdminError) {
-        console.error(
-          "Unable to check platform admin status:",
-          platformAdminError
-        )
-      }
-
-      let availableOrganizations: Organization[] = []
-
-      if (platformAdmin) {
-        /*
-         * Platform Admin can operate a tournament for any organization.
-         */
-        const {
-          data: organizationData,
-          error: organizationError,
-        } = await supabase
-          .from("organizations")
-          .select(`
-            id,
-            name,
-            city,
-            state
-          `)
-          .order("name")
-
-        if (organizationError) {
-          if (!cancelled) {
-            setError(organizationError.message)
-            setLoadingOrganizations(false)
-          }
-          return
+        .from("organizations")
+        .select(`
+          id,
+          name,
+          city,
+          state
+        `)
+        .order("name")
+  
+      if (organizationError) {
+        if (!cancelled) {
+          setError(organizationError.message)
+          setLoadingOrganizations(false)
         }
-
-        availableOrganizations =
-          (organizationData ?? []) as Organization[]
-      } else {
-        /*
-         * Normal organization-level tournament administrator.
-         */
-        const {
-          data: membershipData,
-          error: membershipError,
-        } = await supabase
-          .from("organization_members")
-          .select(`
-            organization_id,
-            role,
-            status,
-
-            organization:organizations (
-              id,
-              name,
-              city,
-              state
-            )
-          `)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .in("role", [
-            "owner",
-            "admin",
-            "team_manager",
-          ])
-
-        if (membershipError) {
-          if (!cancelled) {
-            setError(membershipError.message)
-            setLoadingOrganizations(false)
-          }
-          return
-        }
-
-        availableOrganizations = (membershipData ?? [])
-          .map((membership: any) => membership.organization)
-          .filter(
-            (
-              organization: Organization | null
-            ): organization is Organization =>
-              Boolean(organization?.id)
-          )
-          .sort((a, b) =>
-            a.name.localeCompare(b.name)
-          )
+        return
       }
-
+  
       if (cancelled) return
-
+  
+      const availableOrganizations =
+        (organizationData ?? []) as Organization[]
+  
       setOrganizations(availableOrganizations)
-
-      /*
-       * Automatically select the organization if there is only one.
-       */
+  
       if (availableOrganizations.length === 1) {
         setOrganizationId(availableOrganizations[0].id)
       }
-
+  
       setLoadingOrganizations(false)
     }
-
+  
     loadOrganizations()
-
+  
     return () => {
       cancelled = true
     }

@@ -1128,6 +1128,12 @@ const [rosterStatusError, setRosterStatusError] =
                 </Button>
               </Link>
 
+              <Link
+  to={`/dashboard/organizations/${organizationId}/teams/${teamId}/insurance`}
+>
+  Insurance
+</Link>
+
             </div>
 
           </div>

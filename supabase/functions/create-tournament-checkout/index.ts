@@ -23,93 +23,133 @@ Deno.serve(async (req) => {
       req.headers.get("Authorization")
 
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing authorization.",
-        }),
+      return jsonResponse(
         {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+          error:
+            "Missing authorization.",
+        },
+        401
       )
     }
 
     const supabaseUrl =
-      Deno.env.get("SUPABASE_URL")!
+      Deno.env.get("SUPABASE_URL")
 
     const supabaseAnonKey =
-      Deno.env.get("SUPABASE_ANON_KEY")!
+      Deno.env.get("SUPABASE_ANON_KEY")
+
+    const supabaseServiceRoleKey =
+      Deno.env.get(
+        "SUPABASE_SERVICE_ROLE_KEY"
+      )
+
+    if (
+      !supabaseUrl ||
+      !supabaseAnonKey ||
+      !supabaseServiceRoleKey
+    ) {
+      throw new Error(
+        "Supabase environment variables are not configured."
+      )
+    }
 
     /*
      * User-scoped client.
      *
-     * This preserves the calling user's JWT so
-     * your existing RLS policies still apply.
+     * Used to:
+     * - authenticate the caller
+     * - load registration through normal RLS
      */
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({
-          error: "You must be signed in.",
-        }),
+    const userSupabase =
+      createClient(
+        supabaseUrl,
+        supabaseAnonKey,
         {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
+          global: {
+            headers: {
+              Authorization:
+                authHeader,
+            },
+          },
+
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
           },
         }
       )
+
+    /*
+     * Service-role client.
+     *
+     * Used only for trusted server-side
+     * payment-state updates.
+     */
+    const adminSupabase =
+      createClient(
+        supabaseUrl,
+        supabaseServiceRoleKey,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        }
+      )
+
+    /*
+     * Authenticate caller.
+     */
+    const {
+      data: { user },
+      error: userError,
+    } =
+      await userSupabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error(
+        "CHECKOUT AUTH ERROR:",
+        userError
+      )
+
+      return jsonResponse(
+        {
+          error:
+            "You must be signed in.",
+        },
+        401
+      )
     }
 
-    const body = await req.json()
+    /*
+     * Parse request.
+     */
+    const body =
+      await req.json()
 
     const registrationId =
       body?.registrationId
 
     if (!registrationId) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing registration ID.",
-        }),
+      return jsonResponse(
         {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+          error:
+            "Missing registration ID.",
+        },
+        400
       )
     }
 
     /*
-     * Load the trusted registration amount from DB.
-     * Never accept the fee from the browser.
+     * Load trusted registration.
      */
     const {
       data: registration,
       error: registrationError,
-    } = await supabase
-      .from("tournament_registrations")
+    } = await userSupabase
+      .from(
+        "tournament_registrations"
+      )
       .select(`
         id,
         tournament_id,
@@ -119,18 +159,25 @@ Deno.serve(async (req) => {
         registered_by_user_id,
         registration_fee_cents,
         payment_status,
+        stripe_checkout_session_id,
+
         tournaments (
           name
         ),
+
         tournament_divisions (
           name,
           age_group
         ),
+
         teams (
           name
         )
       `)
-      .eq("id", registrationId)
+      .eq(
+        "id",
+        registrationId
+      )
       .single()
 
     if (
@@ -142,59 +189,53 @@ Deno.serve(async (req) => {
         registrationError
       )
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "Tournament registration could not be loaded.",
-        }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        404
       )
     }
 
+    /*
+     * Only the user who created the
+     * registration may initiate payment.
+     */
     if (
       registration.registered_by_user_id !==
       user.id
     ) {
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "You do not have permission to pay this registration.",
-        }),
-        {
-          status: 403,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        403
       )
     }
 
+    /*
+     * Never create another Checkout Session
+     * for a registration already marked paid.
+     */
     if (
       registration.payment_status ===
       "paid"
     ) {
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "This registration has already been paid.",
-        }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        409
       )
     }
 
+    /*
+     * Registration fee always comes from
+     * our trusted database snapshot.
+     */
     const amount =
       registration.registration_fee_cents
 
@@ -202,61 +243,285 @@ Deno.serve(async (req) => {
       !amount ||
       amount <= 0
     ) {
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "This registration does not have a valid entry fee.",
-        }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        400
       )
     }
 
+    /*
+     * ==================================================
+     * RECOVER EXISTING CHECKOUT SESSION
+     * ==================================================
+     *
+     * If this registration already has a Stripe
+     * Checkout Session, inspect it before creating
+     * another one.
+     */
+    const existingSessionId =
+      registration
+        .stripe_checkout_session_id
+
+    if (existingSessionId) {
+      try {
+        const existingSession =
+          await stripe.checkout.sessions.retrieve(
+            existingSessionId
+          )
+
+        console.log(
+          "EXISTING CHECKOUT SESSION:",
+          {
+            registrationId:
+              registration.id,
+
+            sessionId:
+              existingSession.id,
+
+            status:
+              existingSession.status,
+
+            paymentStatus:
+              existingSession.payment_status,
+          }
+        )
+
+        /*
+         * Stripe already says it was paid.
+         *
+         * Do not create another session.
+         *
+         * Normally the webhook will also have
+         * marked Supabase paid. If Supabase is
+         * temporarily behind, returning a conflict
+         * prevents a duplicate charge.
+         */
+        if (
+          existingSession.payment_status ===
+          "paid" ||
+          existingSession.status ===
+          "complete"
+        ) {
+          return jsonResponse(
+            {
+              error:
+                "Stripe already shows this registration as paid. Payment confirmation may still be processing.",
+              sessionId:
+                existingSession.id,
+            },
+            409
+          )
+        }
+
+        /*
+         * Existing hosted Checkout is still open.
+         *
+         * Reuse it instead of creating another
+         * Checkout Session.
+         */
+        if (
+          existingSession.status ===
+            "open" &&
+          existingSession.url
+        ) {
+          /*
+           * Keep our DB state aligned.
+           */
+          const {
+            error:
+              pendingUpdateError,
+          } = await adminSupabase
+            .from(
+              "tournament_registrations"
+            )
+            .update({
+              payment_status:
+                "pending",
+            })
+            .eq(
+              "id",
+              registration.id
+            )
+
+          if (pendingUpdateError) {
+            console.error(
+              "PENDING PAYMENT RECOVERY UPDATE ERROR:",
+              pendingUpdateError
+            )
+
+            throw pendingUpdateError
+          }
+
+          console.log(
+            "REUSING CHECKOUT SESSION:",
+            {
+              registrationId:
+                registration.id,
+
+              sessionId:
+                existingSession.id,
+            }
+          )
+
+          return jsonResponse(
+            {
+              url:
+                existingSession.url,
+
+              sessionId:
+                existingSession.id,
+
+              reused:
+                true,
+            },
+            200
+          )
+        }
+
+        /*
+         * If status is expired, fall through
+         * and create a new Checkout Session.
+         */
+        if (
+          existingSession.status ===
+          "expired"
+        ) {
+          console.log(
+            "CHECKOUT SESSION EXPIRED — CREATING NEW SESSION:",
+            {
+              registrationId:
+                registration.id,
+
+              sessionId:
+                existingSession.id,
+            }
+          )
+        } else {
+          /*
+           * Any unknown/unusable state also gets
+           * a fresh session instead of trapping
+           * the user.
+           */
+          console.log(
+            "CHECKOUT SESSION NOT REUSABLE — CREATING NEW SESSION:",
+            {
+              registrationId:
+                registration.id,
+
+              sessionId:
+                existingSession.id,
+
+              status:
+                existingSession.status,
+
+              paymentStatus:
+                existingSession.payment_status,
+            }
+          )
+        }
+      } catch (sessionLookupError) {
+        /*
+         * A stored Stripe session could theoretically
+         * be missing or invalid.
+         *
+         * Do not permanently trap the registration.
+         * Log it and create a fresh session.
+         */
+        console.error(
+          "EXISTING CHECKOUT LOOKUP ERROR:",
+          sessionLookupError
+        )
+      }
+    }
+
+    /*
+     * Normalize joined relation values.
+     */
+    const tournamentRelation =
+      registration.tournaments
+
+    const tournament =
+      Array.isArray(
+        tournamentRelation
+      )
+        ? tournamentRelation[0]
+        : tournamentRelation
+
+    const divisionRelation =
+      registration
+        .tournament_divisions
+
+    const division =
+      Array.isArray(
+        divisionRelation
+      )
+        ? divisionRelation[0]
+        : divisionRelation
+
+    const teamRelation =
+      registration.teams
+
+    const team =
+      Array.isArray(teamRelation)
+        ? teamRelation[0]
+        : teamRelation
+
     const tournamentName =
-      registration.tournaments?.name ??
+      tournament?.name ??
       "Tournament"
 
     const divisionName =
-      registration.tournament_divisions
-        ?.name ?? "Division"
+      division?.name ??
+      "Division"
 
     const ageGroup =
-      registration.tournament_divisions
-        ?.age_group ?? ""
+      division?.age_group ??
+      ""
 
     const teamName =
-      registration.teams?.name ??
+      team?.name ??
       "Team"
 
     const siteUrl =
-      Deno.env.get("SITE_URL")!
+      Deno.env.get("SITE_URL")
+
+    if (!siteUrl) {
+      throw new Error(
+        "SITE_URL is not configured."
+      )
+    }
 
     /*
-     * Hosted Stripe Checkout Session.
+     * ==================================================
+     * CREATE NEW CHECKOUT SESSION
+     * ==================================================
      */
     const session =
       await stripe.checkout.sessions.create({
-        mode: "payment",
+        mode:
+          "payment",
 
         client_reference_id:
           registration.id,
 
         customer_email:
-          user.email ?? undefined,
+          user.email ??
+          undefined,
 
         line_items: [
           {
-            quantity: 1,
+            quantity:
+              1,
 
             price_data: {
-              currency: "usd",
+              currency:
+                "usd",
 
-              unit_amount: amount,
+              unit_amount:
+                amount,
 
               product_data: {
                 name:
@@ -304,17 +569,22 @@ Deno.serve(async (req) => {
       })
 
     /*
-     * Store the Checkout Session ID and move
+     * Save new Checkout Session and move the
      * registration into pending payment.
      *
-     * Do NOT mark it paid here.
+     * The Stripe webhook remains the ONLY
+     * code allowed to mark it paid.
      */
     const {
       error: updateError,
-    } = await supabase
-      .from("tournament_registrations")
+    } = await adminSupabase
+      .from(
+        "tournament_registrations"
+      )
       .update({
-        payment_status: "pending",
+        payment_status:
+          "pending",
+
         stripe_checkout_session_id:
           session.id,
       })
@@ -329,33 +599,40 @@ Deno.serve(async (req) => {
         updateError
       )
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "Checkout was created, but registration could not be updated.",
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        500
       )
     }
 
-    return new Response(
-      JSON.stringify({
-        url: session.url,
-        sessionId: session.id,
-      }),
+    console.log(
+      "CHECKOUT SESSION CREATED:",
       {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        registrationId:
+          registration.id,
+
+        sessionId:
+          session.id,
+
+        amount,
       }
+    )
+
+    return jsonResponse(
+      {
+        url:
+          session.url,
+
+        sessionId:
+          session.id,
+
+        reused:
+          false,
+      },
+      200
     )
   } catch (error) {
     console.error(
@@ -363,20 +640,34 @@ Deno.serve(async (req) => {
       error
     )
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         error:
           error instanceof Error
             ? error.message
             : "Unable to create checkout session.",
-      }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
+      },
+      500
     )
   }
 })
+
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number
+) {
+  return new Response(
+    JSON.stringify(body),
+    {
+      status,
+
+      headers: {
+        ...corsHeaders,
+
+        "Content-Type":
+          "application/json",
+      },
+    }
+  )
+}

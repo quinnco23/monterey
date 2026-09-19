@@ -109,6 +109,7 @@ export function AdminTournamentPage() {
             max_teams
           `)
           .eq("tournament_id", tournamentId)
+          .eq("active", true)
           .order("age_group"),
 
         supabase

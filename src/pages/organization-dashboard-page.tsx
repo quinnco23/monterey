@@ -920,13 +920,13 @@ const upcomingSchedule =
 
 {tournaments.map((tournament) => (
   <div key={tournament.id}>
-    <h3>{tournament.name}</h3>
+    {/* <h3>{tournament.name}</h3> */}
 
-    <Link
+    {/* <Link
       to={`/dashboard/tournaments/${tournament.id}/registrations`}
     >
       Manage Tournament
-    </Link>
+    </Link> */}
   </div>
 ))}
 

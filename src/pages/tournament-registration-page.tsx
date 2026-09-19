@@ -45,6 +45,35 @@ type OrganizationMembership = {
   status: string
 }
 
+type TeamInsuranceProfile = {
+  id: string
+  provider: string
+  policy_number: string
+  effective_date: string | null
+  expiration_date: string
+  certificate_path: string | null
+  status:
+    | "pending"
+    | "verified"
+    | "rejected"
+    | "expired"
+    | "needs_review"
+}
+
+type TournamentReadiness = {
+  ready: boolean
+  team_active?: boolean
+  division_valid?: boolean
+  age_group_match?: boolean
+  roster_exists?: boolean
+  roster_id?: string | null
+  roster_status?: string | null
+  active_eligible_player_count?: number
+  minimum_roster_players?: number
+  reasons?: string[]
+}
+
+
 export function TournamentRegistrationPage() {
   const { tournamentId } = useParams()
   const navigate = useNavigate()
@@ -69,8 +98,22 @@ const [insuranceAttested, setInsuranceAttested] = useState(false)
 const [termsAccepted, setTermsAccepted] = useState(false)
 const [waiverAccepted, setWaiverAccepted] = useState(false)
 const [eligibilityAttested, setEligibilityAttested] = useState(false)
-const allowPaymentBypass =
-  import.meta.env.DEV
+
+const [
+  teamInsurance,
+  setTeamInsurance,
+] = useState<TeamInsuranceProfile | null>(null)
+
+const [
+  loadingTeamInsurance,
+  setLoadingTeamInsurance,
+] = useState(false)
+
+const [
+  existingPaymentStatus,
+  setExistingPaymentStatus,
+] = useState<string | null>(null)
+
 
   
 
@@ -251,11 +294,204 @@ const allowPaymentBypass =
     [teams, teamId]
   )
 
+  useEffect(() => {
+    async function loadTeamInsurance() {
+      if (!selectedTeam) {
+        setTeamInsurance(null)
+  
+        setInsuranceProvider("")
+        setInsurancePolicyNumber("")
+        setInsuranceExpiration("")
+  
+        return
+      }
+  
+      setLoadingTeamInsurance(true)
+  
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("team_insurance")
+        .select(`
+          id,
+          provider,
+          policy_number,
+          effective_date,
+          expiration_date,
+          certificate_path,
+          status
+        `)
+        .eq(
+          "team_id",
+          selectedTeam.id
+        )
+        .maybeSingle()
+  
+      if (error) {
+        console.error(
+          "TEAM INSURANCE LOOKUP ERROR:",
+          error
+        )
+  
+        setTeamInsurance(null)
+        setLoadingTeamInsurance(false)
+        return
+      }
+  
+      const insurance =
+        data as TeamInsuranceProfile | null
+  
+      setTeamInsurance(insurance)
+  
+      /*
+       * Prefill whenever a team insurance
+       * record exists.
+       *
+       * Verification status is displayed
+       * separately below.
+       */
+      if (insurance) {
+        setInsuranceProvider(
+          insurance.provider ?? ""
+        )
+  
+        setInsurancePolicyNumber(
+          insurance.policy_number ?? ""
+        )
+  
+        setInsuranceExpiration(
+          insurance.expiration_date ?? ""
+        )
+      } else {
+        setInsuranceProvider("")
+        setInsurancePolicyNumber("")
+        setInsuranceExpiration("")
+      }
+  
+      setLoadingTeamInsurance(false)
+    }
+  
+    void loadTeamInsurance()
+  }, [selectedTeam])
+
   const selectedDivision = useMemo(
     () =>
       divisions.find((division) => division.id === divisionId) ?? null,
     [divisions, divisionId]
   )
+
+  const insuranceCoversTournament = useMemo(() => {
+    if (
+      !teamInsurance ||
+      !tournament
+    ) {
+      return false
+    }
+  
+    const tournamentStart =
+      new Date(
+        `${tournament.start_date}T12:00:00`
+      )
+  
+    const tournamentEnd =
+      new Date(
+        `${tournament.end_date}T12:00:00`
+      )
+  
+    const insuranceExpiration =
+      new Date(
+        `${teamInsurance.expiration_date}T12:00:00`
+      )
+  
+    const expirationCovers =
+      insuranceExpiration.getTime() >=
+      tournamentEnd.getTime()
+  
+    if (
+      !teamInsurance.effective_date
+    ) {
+      return expirationCovers
+    }
+  
+    const insuranceEffective =
+      new Date(
+        `${teamInsurance.effective_date}T12:00:00`
+      )
+  
+    const startsInTime =
+      insuranceEffective.getTime() <=
+      tournamentStart.getTime()
+  
+    return (
+      startsInTime &&
+      expirationCovers
+    )
+  }, [
+    teamInsurance,
+    tournament,
+  ])
+
+  const insuranceReady =
+  teamInsurance?.status ===
+    "verified" &&
+  insuranceCoversTournament
+
+  useEffect(() => {
+    async function loadExistingRegistration() {
+      if (
+        !tournamentId ||
+        !selectedTeam ||
+        !selectedDivision
+      ) {
+        setExistingPaymentStatus(null)
+        return
+      }
+  
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("tournament_registrations")
+        .select(`
+          id,
+          payment_status
+        `)
+        .eq(
+          "tournament_id",
+          tournamentId
+        )
+        .eq(
+          "division_id",
+          selectedDivision.id
+        )
+        .eq(
+          "team_id",
+          selectedTeam.id
+        )
+        .maybeSingle()
+  
+      if (error) {
+        console.error(
+          "EXISTING REGISTRATION LOOKUP ERROR:",
+          error
+        )
+  
+        setExistingPaymentStatus(null)
+        return
+      }
+  
+      setExistingPaymentStatus(
+        data?.payment_status ?? null
+      )
+    }
+  
+    void loadExistingRegistration()
+  }, [
+    tournamentId,
+    selectedTeam,
+    selectedDivision,
+  ])
 
   const compatibleDivisions = useMemo(() => {
     if (!selectedTeam?.age_group) {
@@ -312,6 +548,23 @@ const allowPaymentBypass =
     divisionId,
   ])
 
+  function showRegistrationError(
+    message: string
+  ) {
+    setError(message)
+  
+    setTimeout(() => {
+      document
+        .getElementById(
+          "registration-error"
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        })
+    }, 0)
+  }
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -326,7 +579,7 @@ const allowPaymentBypass =
       setError("Select a team and division.")
       return
     }
-
+  
     if (
       !insuranceAttested ||
       !eligibilityAttested ||
@@ -338,204 +591,183 @@ const allowPaymentBypass =
       )
       return
     }
-  
-    setSaving(true)
-    setError("")
-  
-    // Check for an existing tournament entry
-    const {
-      data: existingRegistration,
-      error: lookupError,
-    } = await supabase
-      .from("tournament_teams")
-      .select(`
-        id,
-        status
-      `)
-      .eq("tournament_id", tournamentId)
-      .eq("division_id", selectedDivision.id)
-      .eq("team_id", selectedTeam.id)
-      .maybeSingle()
-  
-    if (lookupError) {
-      setSaving(false)
-      setError(lookupError.message)
-      return
-    }
-  
-    if (existingRegistration) {
-      setSaving(false)
+    
+    /*
+     * A verified policy must cover the
+     * entire tournament date range.
+     */
+    if (
+      teamInsurance &&
+      teamInsurance.status === "verified" &&
+      !insuranceCoversTournament
+    ) {
       setError(
-        "This team is already registered for that tournament division."
+        "The verified insurance policy does not cover the full tournament dates."
       )
       return
     }
-  
-    const now = new Date().toISOString()
-  
-    // 1. Create the registration/payment record
-    const {
-      data: registration,
-      error: registrationError,
-    } = await supabase
-      .from("tournament_registrations")
-      .insert({
-        tournament_id: tournamentId,
-        division_id: selectedDivision.id,
-        team_id: selectedTeam.id,
-        organization_id: selectedTeam.organization_id,
-        registered_by_user_id: user.id,
-      
-        status: "submitted",
-      
-        // PAYMENT 
-        payment_status: "unpaid",
-        registration_fee_cents:
-          selectedDivision.registration_fee_cents,
-      
-        // INSURANCE
-        insurance_provider:
-          insuranceProvider.trim() || null,
-      
-        insurance_policy_number:
-          insurancePolicyNumber.trim() || null,
-      
-        insurance_expiration:
-          insuranceExpiration || null,
-      
-        insurance_attested: true,
-        insurance_attested_at: now,
-      
-        // PLAYER ELIGIBILITY
-        eligibility_attested: true,
-        eligibility_attested_at: now,
-      
-        // AGREEMENTS
-        terms_accepted: true,
-        terms_accepted_at: now,
-      
-        waiver_accepted: true,
-        waiver_accepted_at: now,
-      
-        // REGISTRATION / PAYMENT TIMES
-        submitted_at: now,
-        paid_at: null,
-      })
-      .select("id")
-      .single()
-  
-    if (registrationError) {
-      setSaving(false)
-      setError(registrationError.message)
-      return
-    }
-
     
-  
-    // 2. Create the actual tournament participant
-    const { error: teamEntryError } = await supabase
-      .from("tournament_teams")
-      .insert({
-        tournament_id: tournamentId,
-        division_id: selectedDivision.id,
-        team_id: selectedTeam.id,
-        display_name: selectedTeam.name,
-  
-        city: selectedTeam.city ?? null,
-        state: selectedTeam.state ?? null,
-  
-        status: "pending",
-        notes: notes.trim() || null,
-  
-        registration_id: registration.id,
-      })
-  
-    if (teamEntryError) {
-      setSaving(false)
-      setError(teamEntryError.message)
-      return
-    }
-
+    /*
+     * Tournament registration readiness.
+     *
+     * The backend is authoritative here.
+     * Do not create a registration or start
+     * Stripe Checkout unless the team passes.
+     */
+    setSaving(true)
+    setError("")
+    
     const {
-      data: checkoutData,
-      error: checkoutError,
-    } = await supabase.functions.invoke(
-      "create-tournament-checkout",
+      data: readinessData,
+      error: readinessError,
+    } = await supabase.rpc(
+      "validate_tournament_registration_readiness",
       {
-        body: {
-          registrationId:
-            registration.id,
-        },
+        target_team_id: selectedTeam.id,
+        target_tournament_id: tournamentId,
+        target_division_id: selectedDivision.id,
       }
     )
     
-    if (checkoutError) {
+    if (readinessError) {
       console.error(
-        "CHECKOUT ERROR:",
-        checkoutError
+        "TOURNAMENT READINESS ERROR:",
+        readinessError
       )
     
       setSaving(false)
-    
       setError(
-        "Registration was created, but checkout could not be started."
+        readinessError.message ||
+          "Team readiness could not be checked."
       )
-    
       return
     }
     
-    if (!checkoutData?.url) {
+    const readiness =
+      readinessData as TournamentReadiness | null
+    
+    console.log(
+      "TOURNAMENT READINESS:",
+      readiness
+    )
+    
+    if (!readiness?.ready) {
       setSaving(false)
     
+      const reasons =
+        readiness?.reasons ?? []
+    
+        if (
+          reasons.includes(
+            "MINIMUM_ROSTER_NOT_MET"
+          )
+        ) {
+          const currentPlayers =
+            readiness?.active_eligible_player_count ?? 0
+        
+          const minimumPlayers =
+            readiness?.minimum_roster_players ?? 1
+        
+            showRegistrationError(
+              `This team is not ready for tournament registration. ` +
+              `It currently has ${currentPlayers} active, eligible ` +
+              `player${currentPlayers === 1 ? "" : "s"} on the roster. ` +
+              `At least ${minimumPlayers} ` +
+              `player${minimumPlayers === 1 ? "" : "s"} required.`
+            )
+            
+            return
+        }
+    
+        if (
+          reasons.includes(
+            "NO_REGISTRATION_READY_ROSTER"
+          )
+        ) {
+          showRegistrationError(
+            "This team does not have an open, active, or locked roster available for tournament registration."
+          )
+        
+          return
+        }
+    
+      if (
+        reasons.includes(
+          "TEAM_NOT_ACTIVE"
+        )
+      ) {
+        setError(
+          "This team must be active before it can register for a tournament."
+        )
+        return
+      }
+    
+      if (
+        reasons.includes(
+          "AGE_GROUP_MISMATCH"
+        )
+      ) {
+        setError(
+          "This team's age group does not match the selected tournament division."
+        )
+        return
+      }
+    
+      if (
+        reasons.includes(
+          "DIVISION_INACTIVE"
+        )
+      ) {
+        setError(
+          "This tournament division is not currently accepting registrations."
+        )
+        return
+      }
+    
+      if (
+        reasons.includes(
+          "DIVISION_TOURNAMENT_MISMATCH"
+        )
+      ) {
+        setError(
+          "The selected division does not belong to this tournament."
+        )
+        return
+      }
+    
       setError(
-        "Stripe checkout URL was not returned."
+        "This team does not currently meet the requirements for tournament registration."
       )
     
       return
     }
-  
-    setSaving(false)
-  
-    // 3. Registration complete
-    window.location.href = checkoutData.url
-    return
-  }
-
-  async function handleTestBypassPayment() {
-    if (
-      !tournamentId ||
-      !user ||
-      !selectedTeam ||
-      !selectedDivision
-    ) {
-      setError("Select a team and division.")
-      return
-    }
-  
-    if (
-      !insuranceAttested ||
-      !eligibilityAttested ||
-      !termsAccepted ||
-      !waiverAccepted
-    ) {
-      setError(
-        "Please complete all insurance, eligibility, and agreement confirmations."
-      )
-      return
-    }
-  
+    
+    /*
+     * Readiness passed.
+     * Continue with registration/payment.
+     */
+    
     setSaving(true)
     setError("")
+    setError("")
   
-    // Make sure the team is not already entered.
+    /*
+     * Look for an existing registration.
+     *
+     * We reuse unpaid / pending / failed
+     * registrations instead of creating duplicates.
+     */
     const {
       data: existingRegistration,
       error: lookupError,
     } = await supabase
-      .from("tournament_teams")
+      .from("tournament_registrations")
       .select(`
         id,
-        status
+        status,
+        payment_status,
+        registration_fee_cents,
+        stripe_checkout_session_id
       `)
       .eq(
         "tournament_id",
@@ -557,174 +789,216 @@ const allowPaymentBypass =
       return
     }
   
-    if (existingRegistration) {
+    /*
+     * Already paid.
+     *
+     * Never create another Stripe Checkout
+     * session for a paid registration.
+     */
+    if (
+      existingRegistration?.payment_status ===
+      "paid"
+    ) {
       setSaving(false)
-      setError(
-        "This team is already registered for that tournament division."
+  
+      navigate(
+        `/dashboard/tournaments/${tournamentId}/registration/${existingRegistration.id}/payment-success`,
+        {
+          replace: true,
+        }
       )
+  
       return
     }
   
     const now =
       new Date().toISOString()
   
-    // Create registration but leave payment UNPAID.
+    /*
+     * Reuse an existing registration if one
+     * exists. Otherwise create a new one.
+     */
+    let registration:
+      | { id: string }
+      | null = null
+  
+    if (existingRegistration?.id) {
+      registration = {
+        id: existingRegistration.id,
+      }
+    } else {
+      const {
+        data: createdRegistration,
+        error: registrationError,
+      } = await supabase
+        .from(
+          "tournament_registrations"
+        )
+        .insert({
+          tournament_id:
+            tournamentId,
+  
+          division_id:
+            selectedDivision.id,
+  
+          team_id:
+            selectedTeam.id,
+  
+          organization_id:
+            selectedTeam.organization_id,
+  
+          registered_by_user_id:
+            user.id,
+  
+          status:
+            "submitted",
+  
+          payment_status:
+            "unpaid",
+  
+          registration_fee_cents:
+            selectedDivision.registration_fee_cents,
+  
+          insurance_provider:
+            insuranceProvider.trim() ||
+            null,
+  
+          insurance_policy_number:
+            insurancePolicyNumber.trim() ||
+            null,
+  
+          insurance_expiration:
+            insuranceExpiration ||
+            null,
+  
+          insurance_attested:
+            true,
+  
+          insurance_attested_at:
+            now,
+  
+          eligibility_attested:
+            true,
+  
+          eligibility_attested_at:
+            now,
+  
+          terms_accepted:
+            true,
+  
+          terms_accepted_at:
+            now,
+  
+          waiver_accepted:
+            true,
+  
+          waiver_accepted_at:
+            now,
+  
+          submitted_at:
+            now,
+  
+          paid_at:
+            null,
+        })
+        .select("id")
+        .single()
+  
+      if (
+        registrationError ||
+        !createdRegistration
+      ) {
+        setSaving(false)
+  
+        setError(
+          registrationError?.message ??
+            "Registration could not be created."
+        )
+  
+        return
+      }
+  
+      registration =
+        createdRegistration
+    }
+  
+    /*
+     * Start or restart Stripe Checkout.
+     *
+     * create-tournament-checkout owns the
+     * trusted payment-state update.
+     */
     const {
-      data: registration,
-      error: registrationError,
-    } = await supabase
-      .from("tournament_registrations")
-      .insert({
-        tournament_id:
-          tournamentId,
+      data: checkoutData,
+      error: checkoutError,
+    } = await supabase.functions.invoke(
+      "create-tournament-checkout",
+      {
+        body: {
+          registrationId:
+            registration.id,
+        },
+      }
+    )
   
-        division_id:
-          selectedDivision.id,
-  
-        team_id:
-          selectedTeam.id,
-  
-        organization_id:
-          selectedTeam.organization_id,
-  
-        registered_by_user_id:
-          user.id,
-  
-        status:
-          "submitted",
-  
-        payment_status:
-          "unpaid",
-  
-        registration_fee_cents:
-          selectedDivision.registration_fee_cents,
-  
-        insurance_provider:
-          insuranceProvider.trim() ||
-          null,
-  
-        insurance_policy_number:
-          insurancePolicyNumber.trim() ||
-          null,
-  
-        insurance_expiration:
-          insuranceExpiration ||
-          null,
-  
-        insurance_attested:
-          true,
-  
-        insurance_attested_at:
-          now,
-  
-        eligibility_attested:
-          true,
-  
-        eligibility_attested_at:
-          now,
-  
-        terms_accepted:
-          true,
-  
-        terms_accepted_at:
-          now,
-  
-        waiver_accepted:
-          true,
-  
-        waiver_accepted_at:
-          now,
-  
-        submitted_at:
-          now,
-  
-        paid_at:
-          null,
-      })
-      .select("id")
-      .single()
-  
-    if (registrationError) {
-      setSaving(false)
-      setError(
-        registrationError.message
+    if (checkoutError) {
+      console.error(
+        "CHECKOUT ERROR:",
+        checkoutError
       )
+  
+      let checkoutMessage =
+        "Registration exists, but checkout could not be started."
+  
+      try {
+        const context =
+          (checkoutError as any)?.context
+  
+        if (context) {
+          const responseBody =
+            await context.clone().json()
+  
+          console.error(
+            "CHECKOUT RESPONSE BODY:",
+            responseBody
+          )
+  
+          if (responseBody?.error) {
+            checkoutMessage =
+              responseBody.error
+          }
+        }
+      } catch (responseError) {
+        console.error(
+          "Could not read checkout error response:",
+          responseError
+        )
+      }
+  
+      setSaving(false)
+      setError(checkoutMessage)
+  
       return
     }
   
-    // Create tournament participant.
-    const {
-      error: teamEntryError,
-    } = await supabase
-      .from("tournament_teams")
-      .insert({
-        tournament_id:
-          tournamentId,
-  
-        division_id:
-          selectedDivision.id,
-  
-        team_id:
-          selectedTeam.id,
-  
-        display_name:
-          selectedTeam.name,
-  
-        city:
-          selectedTeam.city ?? null,
-  
-        state:
-          selectedTeam.state ?? null,
-  
-        status:
-          "pending",
-  
-        notes:
-          notes.trim() || null,
-  
-        registration_id:
-          registration.id,
-      })
-  
-    if (teamEntryError) {
+    if (!checkoutData?.url) {
       setSaving(false)
+  
       setError(
-        teamEntryError.message
+        "Stripe checkout URL was not returned."
       )
+  
       return
     }
   
     setSaving(false)
   
-    navigate(
-      "/dashboard/registrations/success",
-      {
-        replace: true,
-  
-        state: {
-          registrationId:
-            registration.id,
-  
-          tournamentId,
-  
-          teamId:
-            selectedTeam.id,
-  
-          divisionId:
-            selectedDivision.id,
-  
-          paymentStatus:
-            "unpaid",
-  
-          registrationFeeCents:
-            selectedDivision.registration_fee_cents,
-  
-          paymentBypassed:
-            true,
-        },
-      }
-    )
+    window.location.href =
+      checkoutData.url
   }
+
+
+    
   
 
   if (loading) {
@@ -1019,7 +1293,7 @@ const allowPaymentBypass =
             </div>
 
             {error && (
-              <div className="mt-6 border border-scoreboard-red/60 bg-scoreboard-dark p-4">
+              <div className="mt-6 border border-scoreboard-red/60 bg-scoreboard-dark p-4" id="registration-error">
 
                 <p className="scoreboard-label text-scoreboard-amber">
                   Registration
@@ -1077,6 +1351,84 @@ const allowPaymentBypass =
 <p className="scoreboard-label text-scoreboard-amber">
   Insurance & Eligibility
 </p>
+
+{loadingTeamInsurance ? (
+  <div className="mt-4 border border-scoreboard-cream/20 bg-scoreboard-dark p-4">
+    <p className="text-sm text-scoreboard-muted">
+      Checking team insurance...
+    </p>
+  </div>
+) : teamInsurance ? (
+  <div className="mt-4 border border-scoreboard-cream/20 bg-scoreboard-dark p-4">
+
+    <p className="scoreboard-label text-scoreboard-amber">
+      Team Insurance On File
+    </p>
+
+    <p className="mt-2 text-sm font-black uppercase text-scoreboard-cream">
+      {teamInsurance.status.replaceAll(
+        "_",
+        " "
+      )}
+    </p>
+
+    <p className="mt-2 text-sm text-scoreboard-muted">
+      {teamInsurance.provider}
+      {" • "}
+      Expires{" "}
+      {new Date(
+        `${teamInsurance.expiration_date}T12:00:00`
+      ).toLocaleDateString()}
+    </p>
+
+    {teamInsurance.status === "verified" &&
+  insuranceCoversTournament && (
+    <p className="mt-3 text-xs font-black uppercase tracking-[0.10em] text-scoreboard-amber">
+      Verified & Covers Tournament
+    </p>
+  )}
+
+{teamInsurance.status === "verified" &&
+  !insuranceCoversTournament && (
+    <div className="mt-3 border border-scoreboard-red/60 p-3">
+      <p className="text-xs font-black uppercase tracking-[0.10em] text-scoreboard-red">
+        Verified Policy Does Not Cover Tournament Dates
+      </p>
+
+      <p className="mt-2 text-xs text-scoreboard-muted">
+        This policy expires before the tournament ends or begins after the tournament starts.
+      </p>
+    </div>
+  )}
+
+{teamInsurance.status !== "verified" && (
+  <p className="mt-3 text-xs uppercase tracking-[0.08em] text-scoreboard-muted">
+    This policy has not yet been verified by the platform.
+  </p>
+)}
+
+    {teamInsurance.status !== "verified" && (
+      <p className="mt-3 text-xs uppercase tracking-[0.08em] text-scoreboard-muted">
+        This policy has not yet been verified by the platform.
+      </p>
+    )}
+
+    
+
+  </div>
+) : selectedTeam ? (
+  <div className="mt-4 border border-scoreboard-amber/40 bg-scoreboard-dark p-4">
+
+    <p className="scoreboard-label text-scoreboard-amber">
+      No Team Insurance On File
+    </p>
+
+    <p className="mt-2 text-sm text-scoreboard-muted">
+      Enter insurance details below or add insurance from the team dashboard.
+    </p>
+
+  </div>
+) : null}
 
 <div className="mt-5 grid gap-4 sm:grid-cols-2">
 
@@ -1178,6 +1530,55 @@ const allowPaymentBypass =
   </label>
 
 </div>
+<div className="mt-5 border border-scoreboard-amber/40 bg-scoreboard-dark p-5">
+
+  <p className="scoreboard-label text-scoreboard-amber">
+    Need Insurance?
+  </p>
+
+  <h3 className="mt-2 text-lg font-black uppercase tracking-[0.05em]">
+    Purchase Coverage
+  </h3>
+
+  <p className="mt-3 text-sm leading-6 text-scoreboard-muted">
+    If your team does not currently have tournament insurance,
+    you can purchase coverage from a third-party provider and
+    return here to submit your policy information.
+  </p>
+
+  <a
+    href="https://YOUR-INSURANCE-PARTNER-LINK"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="
+      mt-5
+      inline-flex
+      w-full
+      items-center
+      justify-center
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-4
+      py-3
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.12em]
+      text-scoreboard-dark
+      transition-colors
+      hover:bg-scoreboard-cream
+    "
+  >
+    Purchase Team Insurance
+  </a>
+
+  <p className="mt-3 text-[10px] uppercase tracking-[0.08em] text-scoreboard-muted">
+    Insurance is purchased directly from the provider.
+    Return to SCBC after purchase to submit your policy.
+  </p>
+
+</div>
 
 </div>
 
@@ -1219,6 +1620,36 @@ const allowPaymentBypass =
 
 </div>
 
+{existingPaymentStatus && (
+  <div className="mb-4 border border-scoreboard-cream/20 bg-scoreboard-dark p-4">
+    <p className="scoreboard-label text-scoreboard-amber">
+      Registration Status
+    </p>
+
+    <p className="mt-2 text-sm text-scoreboard-muted">
+      {existingPaymentStatus === "paid"
+        ? "This team has already paid for this tournament division."
+        : existingPaymentStatus === "pending"
+        ? "A payment session already exists. Continue to complete payment."
+        : existingPaymentStatus === "failed"
+        ? "The previous payment attempt did not complete. You can try again."
+        : "This registration still requires payment."}
+    </p>
+  </div>
+)}
+
+{error && (
+  <div className="mb-4 border border-scoreboard-red/60 bg-scoreboard-dark p-4">
+    <p className="scoreboard-label text-scoreboard-amber">
+      Registration Blocked
+    </p>
+
+    <p className="mt-2 text-sm leading-6 text-scoreboard-cream">
+      {error}
+    </p>
+  </div>
+)}
+
               <Button
                 type="submit"
                 disabled={
@@ -1237,40 +1668,20 @@ const allowPaymentBypass =
                   hover:bg-scoreboard-amber
                 "
               >
-                {saving
-                  ? "Processing..."
-                  : "Pay & Register"}
+               {saving
+  ? "Processing..."
+  : existingPaymentStatus === "paid"
+  ? "View Registration"
+  : existingPaymentStatus === "pending"
+  ? "Continue Payment"
+  : existingPaymentStatus === "failed"
+  ? "Retry Payment"
+  : existingPaymentStatus === "unpaid"
+  ? "Continue Payment"
+  : "Pay & Register"}
               </Button>
 
-              {allowPaymentBypass && (
-  <Button
-    type="button"
-    disabled={
-      saving ||
-      teams.length === 0
-    }
-    onClick={
-      handleTestBypassPayment
-    }
-    className="
-      mt-3
-      w-full
-      rounded-none
-      border
-      border-scoreboard-amber
-      bg-transparent
-      py-5
-      font-black
-      uppercase
-      tracking-[0.12em]
-      text-scoreboard-amber
-      hover:bg-scoreboard-amber
-      hover:text-scoreboard-dark
-    "
-  >
-    Test — Bypass Payment
-  </Button>
-)}
+             
 
 
 
