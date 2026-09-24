@@ -536,22 +536,24 @@ import {
   
   
       const {
+        data: updatedGame,
         error: updateError,
-      } = await supabase
-        .from("tournament_games")
-        .update({
-          field_resource_id:
+      } = await supabase.rpc(
+        "schedule_tournament_game",
+        {
+          target_game_id:
+            game.id,
+      
+          target_field_resource_id:
             draft.fieldResourceId,
-  
-          scheduled_start:
+      
+          target_scheduled_start:
             scheduledStart.toISOString(),
-  
-          status: "scheduled",
-        })
-        .eq(
-          "id",
-          game.id
-        )
+      
+          target_duration_minutes:
+            120,
+        }
+      )
   
   
       if (updateError) {

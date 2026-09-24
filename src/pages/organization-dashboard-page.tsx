@@ -11,7 +11,7 @@ import {
   import { Button } from "@/components/ui/button"
   import { supabase } from "@/lib/supabase"
 
-  import { CalendarPlus } from "lucide-react"
+  import { CalendarPlus, Trophy } from "lucide-react"
   
   type Organization = {
     id: string
@@ -918,20 +918,142 @@ const upcomingSchedule =
 
 </div>
 
-{tournaments.map((tournament) => (
-  <div key={tournament.id}>
-    {/* <h3>{tournament.name}</h3> */}
+{/* TOURNAMENT MANAGEMENT */}
 
-    {/* <Link
-      to={`/dashboard/tournaments/${tournament.id}/registrations`}
-    >
-      Manage Tournament
-    </Link> */}
+{tournaments.length > 0 && (
+  <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="scoreboard-label text-scoreboard-amber">
+          Tournament Operations
+        </p>
+
+        <h2 className="mt-2 text-xl font-black uppercase tracking-[0.06em]">
+          Manage Tournaments
+        </h2>
+      </div>
+
+      <Trophy className="h-5 w-5 text-scoreboard-amber" />
+    </div>
+
+
+    <div className="mt-6 space-y-4">
+      {tournaments.map((tournament) => (
+        <div
+          key={tournament.id}
+          className="
+            border
+            border-scoreboard-cream/20
+            bg-scoreboard-dark/20
+            p-5
+          "
+        >
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+            <div>
+              <p className="text-lg font-black uppercase tracking-[0.05em]">
+                {tournament.name}
+              </p>
+
+              <p className="mt-1 text-xs uppercase tracking-[0.08em] text-scoreboard-muted">
+                {tournament.status.replaceAll("_", " ")}
+              </p>
+
+              <p className="mt-2 text-xs text-scoreboard-muted">
+                {new Date(
+                  tournament.start_date
+                ).toLocaleDateString()}
+                {" – "}
+                {new Date(
+                  tournament.end_date
+                ).toLocaleDateString()}
+              </p>
+            </div>
+
+
+            <div className="flex flex-wrap gap-2">
+
+              <Link
+                to={`/dashboard/tournaments/${tournament.id}/registrations`}
+                className="
+                  inline-flex
+                  min-h-10
+                  items-center
+                  justify-center
+                  border
+                  border-scoreboard-amber
+                  bg-scoreboard-amber
+                  px-4
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.10em]
+                  text-scoreboard-dark
+                  hover:bg-scoreboard-cream
+                "
+              >
+                Registrations
+              </Link>
+
+              <Link
+                to={`/dashboard/tournaments/${tournament.id}/pools`}
+                className="
+                  inline-flex
+                  min-h-10
+                  items-center
+                  justify-center
+                  border
+                  border-scoreboard-cream/30
+                  px-4
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.10em]
+                  text-scoreboard-cream
+                  hover:border-scoreboard-amber
+                  hover:text-scoreboard-amber
+                "
+              >
+                Pools
+              </Link>
+
+              <Link
+                to={`/dashboard/tournaments/${tournament.id}/schedule`}
+                className="
+                  inline-flex
+                  min-h-10
+                  items-center
+                  justify-center
+                  border
+                  border-scoreboard-cream/30
+                  px-4
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.10em]
+                  text-scoreboard-cream
+                  hover:border-scoreboard-amber
+                  hover:text-scoreboard-amber
+                "
+              >
+                Schedule
+              </Link>
+
+            </div>
+
+          </div>
+
+        </div>
+      ))}
+    </div>
+
   </div>
-))}
+)}
 
 {/* SCHEDULED TOURNAMENTS */}
-{/* <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+ <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
 
   <div className="flex items-start justify-between gap-4">
 
@@ -1078,7 +1200,7 @@ const upcomingSchedule =
 
   </div>
 
-</div> */}
+</div> 
 
 {/* SETTINGS */}
 <Link

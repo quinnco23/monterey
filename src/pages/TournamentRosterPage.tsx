@@ -524,15 +524,17 @@ export function TournamentRosterPage() {
   }
 
   const eligibleCount =
-    useMemo(
-      () =>
-        players.filter(
-          (player) =>
-            player.eligibility_status ===
+  useMemo(
+    () =>
+      players.filter(
+        (player) =>
+          player.source_roster_status ===
+            "active" &&
+          player.eligibility_status ===
             "eligible"
-        ).length,
-      [players]
-    )
+      ).length,
+    [players]
+  )
 
   const pendingCount =
     useMemo(
@@ -767,35 +769,35 @@ export function TournamentRosterPage() {
 
                   </div>
 
-                  {!submission && (
-                    <Button
-                      type="button"
-                      disabled={
-                        building ||
-                        !currentRoster
-                      }
-                      onClick={
-                        handleBuildRoster
-                      }
-                      className="
-                        rounded-none
-                        bg-scoreboard-amber
-                        font-black
-                        uppercase
-                        tracking-[0.12em]
-                        text-scoreboard-dark
-                        hover:bg-scoreboard-cream
-                        disabled:opacity-50
-                      "
-                    >
-                      <Users className="mr-2 h-4 w-4" />
+                  {!submission &&
+  registration.status === "approved" && (
+    <Button
+      type="button"
+      disabled={
+        building ||
+        !currentRoster
+      }
+      onClick={
+        handleBuildRoster
+      }
+      className="
+        rounded-none
+        bg-scoreboard-amber
+        font-black
+        uppercase
+        tracking-[0.12em]
+        text-scoreboard-dark
+        hover:bg-scoreboard-cream
+        disabled:opacity-50
+      "
+    >
+      <Users className="mr-2 h-4 w-4" />
 
-                      {building
-                        ? "Building..."
-                        : "Build Tournament Roster"}
-                    </Button>
-                  )}
-
+      {building
+        ? "Building..."
+        : "Build Tournament Roster"}
+    </Button>
+)}
                 </div>
 
                 {error && (
@@ -844,18 +846,20 @@ export function TournamentRosterPage() {
                   <Trophy className="h-10 w-10 text-scoreboard-amber" />
 
                   <p className="scoreboard-label mt-6 text-scoreboard-amber">
-                    Tournament Roster
-                  </p>
+  Tournament Roster
+</p>
 
-                  <h3 className="mt-2 text-2xl font-black uppercase tracking-[0.06em]">
-                    Build Submission
-                  </h3>
+<h3 className="mt-2 text-2xl font-black uppercase tracking-[0.06em]">
+  {registration.status === "approved"
+    ? "Build Submission"
+    : "Awaiting Registration Approval"}
+</h3>
 
-                  <p className="mt-3 max-w-lg text-sm leading-7 text-scoreboard-muted">
-                    Create a snapshot of the team roster for
-                    this tournament. The snapshot can be reviewed
-                    before final submission.
-                  </p>
+<p className="mt-3 max-w-lg text-sm leading-7 text-scoreboard-muted">
+  {registration.status === "approved"
+    ? "Create a snapshot of the team roster for this tournament. The snapshot can be reviewed before final submission."
+    : "Your tournament roster will become available after this registration has been approved."}
+</p>
 
                   {!currentRoster && (
                     <p className="mt-4 text-sm text-scoreboard-red">

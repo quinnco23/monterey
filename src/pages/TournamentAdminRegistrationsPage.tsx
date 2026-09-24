@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
+import RegistrationReadinessState from "./RegistrationReadinessState"
+
+
 
 import {
   ArrowLeft,
@@ -17,6 +20,8 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
+
+
 
 type Tournament = {
   id: string
@@ -87,6 +92,8 @@ type RegistrationWithRoster =
     roster_player_count:
       number
   }
+
+  
 
 export function TournamentAdminRegistrationsPage() {
   const {
@@ -758,6 +765,69 @@ export function TournamentAdminRegistrationsPage() {
                       reviewingRegistrationId ===
                       registration.id
 
+                      const blockers: string[] = []
+
+if (
+  registration.payment_status !==
+  "paid"
+) {
+  blockers.push(
+    "Registration payment has not been completed."
+  )
+}
+
+if (
+  !registration.insurance_attested
+) {
+  blockers.push(
+    "Insurance has not been attested."
+  )
+}
+
+if (
+  !registration.eligibility_attested
+) {
+  blockers.push(
+    "Player eligibility has not been attested."
+  )
+}
+
+if (
+  !registration.terms_accepted
+) {
+  blockers.push(
+    "Tournament terms have not been accepted."
+  )
+}
+
+if (
+  !registration.waiver_accepted
+) {
+  blockers.push(
+    "Tournament waiver has not been accepted."
+  )
+}
+
+if (!roster) {
+  blockers.push(
+    "No tournament roster has been submitted."
+  )
+}
+
+const canApprove =
+  blockers.length === 0
+
+const readinessState:
+  | "ready"
+  | "blocked"
+  | "waitlisted" =
+  registration.status ===
+  "waitlisted"
+    ? "waitlisted"
+    : canApprove
+      ? "ready"
+      : "blocked"
+
                     return (
                       <article
                         key={
@@ -907,6 +977,12 @@ export function TournamentAdminRegistrationsPage() {
                               Director Actions
                             </p>
 
+                            
+                            <RegistrationReadinessState
+  state={readinessState}
+  blockers={blockers}
+/>
+
                             {registration.status ===
                               "submitted" ||
                             registration.status ===
@@ -916,7 +992,8 @@ export function TournamentAdminRegistrationsPage() {
                                 <Button
                                   type="button"
                                   disabled={
-                                    isReviewing
+                                    isReviewing ||
+                                    !canApprove
                                   }
                                   onClick={() =>
                                     handleReviewRegistration(
@@ -1045,27 +1122,29 @@ export function TournamentAdminRegistrationsPage() {
 
                                   <ShieldCheck className="h-4 w-4" />
                                 </Link>
-                                <Link
-                                to={`/dashboard/tournaments/${tournamentId}/pools`}
-                                className="
-                                 flex
-                                    min-h-11
-                                    items-center
-                                    justify-between
-                                    border
-                                    border-scoreboard-cream/30
-                                    px-4
-                                    text-xs
-                                    font-black
-                                    uppercase
-                                    tracking-[0.10em]
-                                    text-scoreboard-cream
-                                    hover:border-scoreboard-amber
-                                    hover:text-scoreboard-amber
-                                "
-                              >
-                                Manage Pools
-                              </Link>
+                                {roster.status === "locked" && (
+  <Link
+    to={`/dashboard/tournaments/${tournamentId}/pools`}
+    className="
+      flex
+      min-h-11
+      items-center
+      justify-between
+      border
+      border-scoreboard-cream/30
+      px-4
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.10em]
+      text-scoreboard-cream
+      hover:border-scoreboard-amber
+      hover:text-scoreboard-amber
+    "
+  >
+    Manage Pools
+  </Link>
+)}
 </>
                                 
                               ) : (

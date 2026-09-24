@@ -40,6 +40,7 @@ import {
       name: string
       age_group: string
       classification: string | null
+      minimum_roster_players: number
     } | null
   }
   
@@ -235,6 +236,7 @@ import {
             name,
             age_group,
             classification
+            minimum_roster_players
           )
         `)
         .eq(
@@ -784,9 +786,10 @@ import {
                         <div className="grid gap-2">
   
                           <Button
-                            type="button"
                             disabled={
-                              busy
+                              busy ||
+                              submission.status === "approved" ||
+                              submission.status === "locked"
                             }
                             onClick={() =>
                               reviewPlayer(
@@ -812,7 +815,9 @@ import {
                           <Button
                             type="button"
                             disabled={
-                              busy
+                              busy ||
+                              submission.status === "approved" ||
+                              submission.status === "locked"
                             }
                             onClick={() =>
                               reviewPlayer(
@@ -836,7 +841,9 @@ import {
                           <Button
                             type="button"
                             disabled={
-                              busy
+                              busy ||
+                              submission.status === "approved" ||
+                              submission.status === "locked"
                             }
                             onClick={() =>
                               reviewPlayer(

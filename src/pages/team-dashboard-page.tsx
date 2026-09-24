@@ -1567,466 +1567,595 @@ const [rosterStatusError, setRosterStatusError] =
                 </Link>
 
               </div>
-            ) : (
-              <>
-
-                {/* DESKTOP COLUMN HEADERS */}
-
-                <div className="hidden grid-cols-[100px_1fr_93px_162px_200px] gap-4 border-b border-scoreboard-cream/20 bg-scoreboard-dark/20 px-5 py-3 md:grid">
-
-                  <span className="scoreboard-label">
-                    No.
-                  </span>
-
-                  <span className="scoreboard-label">
-                    Player
-                  </span>
-
-                  <span className="scoreboard-label">
-                    Pos
-                  </span>
-
-                  <span className="scoreboard-label">
-                    Status
-                  </span>
-
-                  <span className="scoreboard-label text-center">
-                    Actions
-                  </span>
-
-                </div>
-
-                {/* ROSTER ROWS */}
-
-                <div>
-
-                  {roster.map(
-                    (member) => (
-                      <div
-                        key={member.id}
+         ) : (
+          <>
+            {/* =========================
+                DESKTOP ROSTER
+            ========================= */}
+        
+            <div className="hidden md:block">
+        
+              {/* HEADER */}
+              <div
+                className="
+                  grid
+                  grid-cols-[56px_minmax(180px,1fr)_70px_110px_190px]
+                  items-center
+                  gap-3
+                  border-b
+                  border-scoreboard-cream/20
+                  bg-scoreboard-dark/20
+                  px-4
+                  py-2
+                "
+              >
+                <span className="scoreboard-label">
+                  No.
+                </span>
+        
+                <span className="scoreboard-label">
+                  Player
+                </span>
+        
+                <span className="scoreboard-label">
+                  Pos
+                </span>
+        
+                <span className="scoreboard-label">
+                  Status
+                </span>
+        
+                <span className="scoreboard-label text-right">
+                  Actions
+                </span>
+              </div>
+        
+        
+              {/* ROWS */}
+              <div>
+                {roster.map((member) => (
+                  <div
+                    key={member.id}
+                    className="
+                      border-b
+                      border-scoreboard-cream/15
+                      last:border-b-0
+                    "
+                  >
+        
+                    <div
+                      className="
+                        grid
+                        min-h-[54px]
+                        grid-cols-[56px_minmax(180px,1fr)_70px_110px_190px]
+                        items-center
+                        gap-3
+                        px-4
+                        py-2
+                        transition-colors
+                        hover:bg-scoreboard-dark/20
+                      "
+                    >
+        
+                      {/* NUMBER */}
+                      <div>
+                        <span className="scoreboard-number text-lg text-scoreboard-amber">
+                          {member.jersey_number || "--"}
+                        </span>
+                      </div>
+        
+        
+                      {/* PLAYER */}
+                      <div className="flex min-w-0 items-center gap-3">
+        
+                        <span
+                          className="
+                            min-w-0
+                            truncate
+                            text-sm
+                            font-black
+                            uppercase
+                            tracking-[0.03em]
+                          "
+                        >
+                          {member.player?.first_name ??
+                            "Unknown"}{" "}
+                          {member.player?.last_name ??
+                            "Player"}
+                        </span>
+        
+                        {member.player?.graduation_year && (
+                          <span
+                            className="
+                              shrink-0
+                              text-[9px]
+                              uppercase
+                              tracking-[0.08em]
+                              text-scoreboard-muted
+                            "
+                          >
+                            {member.player.graduation_year}
+                          </span>
+                        )}
+        
+                        <div className="flex shrink-0 items-center gap-1">
+                          <RosterBadge
+                            label={
+                              member.invitation_status
+                            }
+                            tone={
+                              member.invitation_status ===
+                              "accepted"
+                                ? "good"
+                                : "muted"
+                            }
+                          />
+        
+                          <RosterBadge
+                            label={
+                              member.eligibility_status
+                            }
+                            tone={
+                              member.eligibility_status ===
+                              "eligible"
+                                ? "good"
+                                : member.eligibility_status ===
+                                    "ineligible"
+                                  ? "danger"
+                                  : "warning"
+                            }
+                          />
+                        </div>
+        
+                      </div>
+        
+        
+                      {/* POSITION */}
+                      <div className="flex items-center gap-1">
+        
+                        <span className="scoreboard-number text-sm">
+                          {member.primary_position ||
+                            "UTIL"}
+                        </span>
+        
+                        {member.secondary_position && (
+                          <span className="text-[9px] uppercase text-scoreboard-muted">
+                            /
+                            {
+                              member.secondary_position
+                            }
+                          </span>
+                        )}
+        
+                      </div>
+        
+        
+                      {/* STATUS */}
+                      <div>
+                        <RosterBadge
+                          label={
+                            member.roster_status
+                          }
+                          tone={
+                            member.roster_status ===
+                            "active"
+                              ? "good"
+                              : member.roster_status ===
+                                  "released"
+                                ? "danger"
+                                : "warning"
+                          }
+                        />
+                      </div>
+        
+        
+                      {/* ACTIONS */}
+                      <div className="flex justify-end gap-1.5">
+        
+                        {member.player?.id && (
+                          <>
+                            <Link
+                              to={`/dashboard/organizations/${organizationId}/players/${member.player.id}`}
+                              className="
+                                inline-flex
+                                items-center
+                                justify-center
+                                border
+                                border-scoreboard-amber/70
+                                px-2
+                                py-1.5
+                                text-[9px]
+                                font-black
+                                uppercase
+                                tracking-[0.08em]
+                                text-scoreboard-amber
+                                hover:bg-scoreboard-amber
+                                hover:text-scoreboard-dark
+                              "
+                            >
+                              Profile
+                            </Link>
+        
+                            <Link
+                              to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player.id}/edit`}
+                              className="
+                                inline-flex
+                                items-center
+                                justify-center
+                                border
+                                border-scoreboard-cream/30
+                                px-2
+                                py-1.5
+                                text-[9px]
+                                font-black
+                                uppercase
+                                tracking-[0.08em]
+                                text-scoreboard-cream
+                                hover:border-scoreboard-amber
+                                hover:text-scoreboard-amber
+                              "
+                            >
+                              Edit
+                            </Link>
+        
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  managingRosterPlayerId ===
+                                  member.id
+                                ) {
+                                  setManagingRosterPlayerId(
+                                    null
+                                  )
+        
+                                  setManageError("")
+                                  return
+                                }
+        
+                                setManagingRosterPlayerId(
+                                  member.id
+                                )
+        
+                                setManageRosterStatus(
+                                  member.roster_status
+                                )
+        
+                                setManageEligibilityStatus(
+                                  member.eligibility_status
+                                )
+        
+                                setManageError("")
+                              }}
+                              className="
+                                inline-flex
+                                items-center
+                                justify-center
+                                border
+                                border-scoreboard-cream/30
+                                px-2
+                                py-1.5
+                                text-[9px]
+                                font-black
+                                uppercase
+                                tracking-[0.08em]
+                                text-scoreboard-cream
+                                hover:border-scoreboard-amber
+                                hover:text-scoreboard-amber
+                              "
+                            >
+                              {managingRosterPlayerId ===
+                              member.id
+                                ? "Close"
+                                : "Manage"}
+                            </button>
+                          </>
+                        )}
+        
+                      </div>
+        
+                    </div>
+        
+        
+                    {/* DESKTOP MANAGE PANEL */}
+        
+                    {managingRosterPlayerId ===
+                      member.id && (
+                      <ManageRosterPlayerPanel
+                        member={member}
+                        manageRosterStatus={
+                          manageRosterStatus
+                        }
+                        setManageRosterStatus={
+                          setManageRosterStatus
+                        }
+                        manageEligibilityStatus={
+                          manageEligibilityStatus
+                        }
+                        setManageEligibilityStatus={
+                          setManageEligibilityStatus
+                        }
+                        manageSaving={
+                          manageSaving
+                        }
+                        manageError={
+                          manageError
+                        }
+                        onSave={() =>
+                          handleSaveRosterPlayer(
+                            member
+                          )
+                        }
+                        onCancel={() => {
+                          setManagingRosterPlayerId(
+                            null
+                          )
+        
+                          setManageError("")
+                        }}
+                      />
+                    )}
+        
+                  </div>
+                ))}
+              </div>
+        
+            </div>
+        
+        
+            {/* =========================
+                MOBILE ROSTER
+            ========================= */}
+        
+            <div className="divide-y divide-scoreboard-cream/15 md:hidden">
+        
+              {roster.map((member) => (
+                <div
+                  key={member.id}
+                  className="px-4 py-4"
+                >
+        
+                  {/* TOP LINE */}
+        
+                  <div className="flex items-start justify-between gap-3">
+        
+                    <div className="flex min-w-0 items-center gap-3">
+        
+                      <span className="scoreboard-number shrink-0 text-xl text-scoreboard-amber">
+                        {member.jersey_number ||
+                          "--"}
+                      </span>
+        
+                      <div className="min-w-0">
+        
+                        <p className="truncate text-sm font-black uppercase tracking-[0.04em]">
+                          {member.player
+                            ?.first_name ??
+                            "Unknown"}{" "}
+                          {member.player
+                            ?.last_name ??
+                            "Player"}
+                        </p>
+        
+                        <div className="mt-1 flex items-center gap-2 text-[10px] uppercase text-scoreboard-muted">
+        
+                          {member.player
+                            ?.graduation_year && (
+                            <span>
+                              Class{" "}
+                              {
+                                member.player
+                                  .graduation_year
+                              }
+                            </span>
+                          )}
+        
+                          <span>
+                            {member.primary_position ||
+                              "UTIL"}
+        
+                            {member.secondary_position
+                              ? ` / ${member.secondary_position}`
+                              : ""}
+                          </span>
+        
+                        </div>
+        
+                      </div>
+        
+                    </div>
+        
+        
+                    <RosterBadge
+                      label={
+                        member.roster_status
+                      }
+                      tone={
+                        member.roster_status ===
+                        "active"
+                          ? "good"
+                          : member.roster_status ===
+                              "released"
+                            ? "danger"
+                            : "warning"
+                      }
+                    />
+        
+                  </div>
+        
+        
+                  {/* BADGES */}
+        
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+        
+                    <RosterBadge
+                      label={
+                        member.invitation_status
+                      }
+                      tone={
+                        member.invitation_status ===
+                        "accepted"
+                          ? "good"
+                          : "muted"
+                      }
+                    />
+        
+                    <RosterBadge
+                      label={
+                        member.eligibility_status
+                      }
+                      tone={
+                        member.eligibility_status ===
+                        "eligible"
+                          ? "good"
+                          : member.eligibility_status ===
+                              "ineligible"
+                            ? "danger"
+                            : "warning"
+                      }
+                    />
+        
+                  </div>
+        
+        
+                  {/* MOBILE ACTIONS */}
+        
+                  {member.player?.id && (
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+        
+                      <Link
+                        to={`/dashboard/organizations/${organizationId}/players/${member.player.id}`}
                         className="
-                          border-b
-                          border-scoreboard-cream/15
-                          px-5
-                          py-5
-                          transition-colors
-                          last:border-b-0
-                          hover:bg-scoreboard-dark/20
+                          flex
+                          min-h-10
+                          items-center
+                          justify-center
+                          border
+                          border-scoreboard-amber/70
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.08em]
+                          text-scoreboard-amber
                         "
                       >
-
-                        
-
-                        <div className="grid gap-4 md:grid-cols-[64px_1fr_90px_160px_200px] md:items-center">
-
-                          {/* NUMBER */}
-
-                          
-
-                          <div>
-
-                            <p className="scoreboard-number text-2xl text-scoreboard-amber">
-                              {member.jersey_number ||
-                                "--"}
-                            </p>
-
-                          </div>
-
-                          {/* PLAYER */}
-
-                          <div className="min-w-0">
-
-                            <p className="truncate font-black uppercase tracking-[0.05em]">
-                              {member.player?.first_name ??
-                                "Unknown"}{" "}
-                              {member.player?.last_name ??
-                                "Player"}
-                            </p>
-
-                            {member.player?.graduation_year && (
-                              <p className="mt-1 text-xs text-scoreboard-muted">
-                                Class of{" "}
-                                {member.player.graduation_year}
-                              </p>
-                            )}
-
-                            <div className="mt-2 flex flex-wrap gap-2">
-
-                              <RosterBadge
-                                label={
-                                  member.invitation_status
-                                }
-                                tone={
-                                  member.invitation_status ===
-                                  "accepted"
-                                    ? "good"
-                                    : "muted"
-                                }
-                              />
-
-                              <RosterBadge
-                                label={
-                                  member.eligibility_status
-                                }
-                                tone={
-                                  member.eligibility_status ===
-                                  "eligible"
-                                    ? "good"
-                                    : member.eligibility_status ===
-                                        "ineligible"
-                                      ? "danger"
-                                      : "warning"
-                                }
-                              />
-
-                            </div>
-
-                          </div>
-
-                          {/* POSITION */}
-
-                          <div>
-
-                            <p className="scoreboard-label md:hidden">
-                              Position
-                            </p>
-
-                            <p className="scoreboard-number mt-1 md:mt-0">
-                              {member.primary_position ||
-                                "UTIL"}
-                            </p>
-
-                            {member.secondary_position && (
-                              <p className="mt-1 text-[10px] uppercase tracking-[0.10em] text-scoreboard-muted">
-                                {member.secondary_position}
-                              </p>
-                            )}
-
-                          </div>
-
-                          {/* ROSTER STATUS */}
-
-                          <div className="mr-3">
-  <p className="scoreboard-label mb-2 md:hidden">
-    Roster Status
-  </p>
-
-  <RosterBadge
-    label={member.roster_status}
-    tone={
-      member.roster_status === "active"
-        ? "good"
-        : member.roster_status === "released"
-          ? "danger"
-          : "warning"
-    }
-  />
-</div>
-
-
-
-                          {/* ACTIONS */}
-
-                          <div className="flex gap-2 md:justify-end">
-
-                            {member.player?.id && (
-                              <>
-                                <Link
-                                  to={`/dashboard/organizations/${organizationId}/players/${member.player.id}`}
-                                  className="
-                                    inline-flex
-                                    items-center
-                                    justify-center
-                                    border
-                                    border-scoreboard-amber
-                                    
-                                    px-3
-                                    py-2
-                                    text-[10px]
-                                    font-black
-                                    uppercase
-                                    tracking-[0.10em]
-                                    text-scoreboard-amber
-                                    transition-colors
-                                    hover:bg-scoreboard-amber
-                                    hover:text-scoreboard-dark
-                                  "
-                                >
-                                  Profile
-                                </Link>
-
-                                <Link
-                                  to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player.id}/edit`}
-                                  className="
-                                    inline-flex
-                                    items-center
-                                    justify-center
-                                    border
-                                    border-scoreboard-cream/30
-                                    px-3
-                                    py-2
-                                    text-[10px]
-                                    font-black
-                                    uppercase
-                                    tracking-[0.10em]
-                                    text-scoreboard-cream
-                                    transition-colors
-                                    hover:border-scoreboard-amber
-                                    hover:text-scoreboard-amber
-                                  "
-                                >
-                                  Edit
-                                </Link>
-
-                                <button
-  type="button"
-  onClick={() => {
-    if (
-      managingRosterPlayerId ===
-      member.id
-    ) {
-      setManagingRosterPlayerId(
-        null
-      )
-      setManageError("")
-      return
-    }
-
-    setManagingRosterPlayerId(
-      member.id
-    )
-
-    setManageRosterStatus(
-      member.roster_status
-    )
-
-    setManageEligibilityStatus(
-      member.eligibility_status
-    )
-
-    setManageError("")
-  }}
-  className="
-    inline-flex
-    items-center
-    justify-center
-    border
-    border-scoreboard-cream/30
-    px-3
-    py-2
-    text-[10px]
-    font-black
-    uppercase
-    tracking-[0.10em]
-    text-scoreboard-cream
-    transition-colors
-    hover:border-scoreboard-amber
-    hover:text-scoreboard-amber
-  "
->
-  {managingRosterPlayerId ===
-  member.id
-    ? "Close"
-    : "Manage"}
-</button>
-                              </>
-                            )}
-
-                          </div>
-                          
-
-                        
-                        </div>
-
+                        Profile
+                      </Link>
+        
+                      <Link
+                        to={`/dashboard/organizations/${organizationId}/teams/${teamId}/players/${member.player.id}/edit`}
+                        className="
+                          flex
+                          min-h-10
+                          items-center
+                          justify-center
+                          border
+                          border-scoreboard-cream/30
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.08em]
+                          text-scoreboard-cream
+                        "
+                      >
+                        Edit
+                      </Link>
+        
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            managingRosterPlayerId ===
+                            member.id
+                          ) {
+                            setManagingRosterPlayerId(
+                              null
+                            )
+        
+                            setManageError("")
+                            return
+                          }
+        
+                          setManagingRosterPlayerId(
+                            member.id
+                          )
+        
+                          setManageRosterStatus(
+                            member.roster_status
+                          )
+        
+                          setManageEligibilityStatus(
+                            member.eligibility_status
+                          )
+        
+                          setManageError("")
+                        }}
+                        className="
+                          min-h-10
+                          border
+                          border-scoreboard-cream/30
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.08em]
+                          text-scoreboard-cream
+                        "
+                      >
                         {managingRosterPlayerId ===
-  member.id && (
-  <div className="mt-5 border-t border-scoreboard-cream/20 pt-5">
-
-    <p className="scoreboard-label text-scoreboard-amber">
-      Manage Player
-    </p>
-
-    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-
-      <label>
-
-        <span className="scoreboard-label">
-          Roster Status
-        </span>
-
-        <select
-          value={
-            manageRosterStatus
-          }
-          onChange={(event) =>
-            setManageRosterStatus(
-              event.target.value
-            )
-          }
-          className="
-            mt-2
-            w-full
-            rounded-none
-            border
-            border-scoreboard-cream/30
-            bg-scoreboard-cream
-            px-3
-            py-3
-            text-scoreboard-dark
-            outline-none
-            focus:border-scoreboard-amber
-          "
-        >
-          <option value="pending">
-            Pending
-          </option>
-
-          <option value="active">
-            Active
-          </option>
-
-          <option value="inactive">
-            Inactive
-          </option>
-
-          <option value="waitlist">
-            Waitlist
-          </option>
-
-          <option value="released">
-            Released
-          </option>
-
-        </select>
-
-      </label>
-
-      <label>
-
-        <span className="scoreboard-label">
-          Eligibility
-        </span>
-
-        <select
-          value={
-            manageEligibilityStatus
-          }
-          onChange={(event) =>
-            setManageEligibilityStatus(
-              event.target.value
-            )
-          }
-          className="
-            mt-2
-            w-full
-            rounded-none
-            border
-            border-scoreboard-cream/30
-            bg-scoreboard-cream
-            px-3
-            py-3
-            text-scoreboard-dark
-            outline-none
-            focus:border-scoreboard-amber
-          "
-        >
-          <option value="pending">
-            Pending
-          </option>
-
-          <option value="eligible">
-            Eligible
-          </option>
-
-          <option value="ineligible">
-            Ineligible
-          </option>
-
-          <option value="needs_review">
-            Needs Review
-          </option>
-
-        </select>
-
-      </label>
-
-    </div>
-
-    {manageError && (
-      <div className="mt-4 border border-scoreboard-red/60 bg-scoreboard-dark p-3">
-        <p className="text-sm text-scoreboard-muted">
-          {manageError}
-        </p>
-      </div>
-    )}
-
-    <div className="mt-5 flex flex-wrap gap-3">
-
-      <Button
-        type="button"
-        disabled={
-          manageSaving
-        }
-        onClick={() =>
-          handleSaveRosterPlayer(
-            member
-          )
-        }
-        className="
-          rounded-none
-          bg-scoreboard-amber
-          font-black
-          uppercase
-          tracking-[0.12em]
-          text-scoreboard-dark
-          hover:bg-scoreboard-cream
-        "
-      >
-        {manageSaving
-          ? "Saving..."
-          : "Save Status"}
-      </Button>
-
-      <Button
-        type="button"
-        variant="outline"
-        disabled={
-          manageSaving
-        }
-        onClick={() => {
-          setManagingRosterPlayerId(
-            null
-          )
-
-          setManageError("")
-        }}
-        className="
-          rounded-none
-          border-scoreboard-cream/30
-          bg-transparent
-          font-black
-          uppercase
-          tracking-[0.12em]
-          text-scoreboard-cream
-        "
-      >
-        Cancel
-      </Button>
-
-    </div>
-
-  </div>
-)}
-
-                      </div>
-                    )
+                        member.id
+                          ? "Close"
+                          : "Manage"}
+                      </button>
+        
+                    </div>
                   )}
-
+        
+        
+                  {/* MOBILE MANAGE PANEL */}
+        
+                  {managingRosterPlayerId ===
+                    member.id && (
+                    <ManageRosterPlayerPanel
+                      member={member}
+                      manageRosterStatus={
+                        manageRosterStatus
+                      }
+                      setManageRosterStatus={
+                        setManageRosterStatus
+                      }
+                      manageEligibilityStatus={
+                        manageEligibilityStatus
+                      }
+                      setManageEligibilityStatus={
+                        setManageEligibilityStatus
+                      }
+                      manageSaving={
+                        manageSaving
+                      }
+                      manageError={
+                        manageError
+                      }
+                      onSave={() =>
+                        handleSaveRosterPlayer(
+                          member
+                        )
+                      }
+                      onCancel={() => {
+                        setManagingRosterPlayerId(
+                          null
+                        )
+        
+                        setManageError("")
+                      }}
+                    />
+                  )}
+        
                 </div>
-                
-
-              </>
-            )}
+              ))}
+        
+            </div>
+          </>
+        )}
 
             
 
@@ -2435,6 +2564,196 @@ function RosterBadge({
         " "
       )}
     </span>
+  )
+}
+
+function ManageRosterPlayerPanel({
+  member,
+  manageRosterStatus,
+  setManageRosterStatus,
+  manageEligibilityStatus,
+  setManageEligibilityStatus,
+  manageSaving,
+  manageError,
+  onSave,
+  onCancel,
+}: {
+  member: RosterMember
+  manageRosterStatus: string
+  setManageRosterStatus: (
+    value: string
+  ) => void
+  manageEligibilityStatus: string
+  setManageEligibilityStatus: (
+    value: string
+  ) => void
+  manageSaving: boolean
+  manageError: string
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="border-t border-scoreboard-cream/20 bg-scoreboard-dark/20 px-4 py-4">
+
+      <p className="scoreboard-label text-scoreboard-amber">
+        Manage{" "}
+        {member.player?.first_name ??
+          "Player"}
+      </p>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+
+        <label>
+          <span className="scoreboard-label">
+            Roster Status
+          </span>
+
+          <select
+            value={
+              manageRosterStatus
+            }
+            onChange={(event) =>
+              setManageRosterStatus(
+                event.target.value
+              )
+            }
+            className="
+              mt-2
+              w-full
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              px-3
+              py-2.5
+              text-sm
+              text-scoreboard-dark
+              outline-none
+              focus:border-scoreboard-amber
+            "
+          >
+            <option value="pending">
+              Pending
+            </option>
+
+            <option value="active">
+              Active
+            </option>
+
+            <option value="inactive">
+              Inactive
+            </option>
+
+            <option value="waitlist">
+              Waitlist
+            </option>
+
+            <option value="released">
+              Released
+            </option>
+          </select>
+        </label>
+
+
+        <label>
+          <span className="scoreboard-label">
+            Eligibility
+          </span>
+
+          <select
+            value={
+              manageEligibilityStatus
+            }
+            onChange={(event) =>
+              setManageEligibilityStatus(
+                event.target.value
+              )
+            }
+            className="
+              mt-2
+              w-full
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              px-3
+              py-2.5
+              text-sm
+              text-scoreboard-dark
+              outline-none
+              focus:border-scoreboard-amber
+            "
+          >
+            <option value="pending">
+              Pending
+            </option>
+
+            <option value="eligible">
+              Eligible
+            </option>
+
+            <option value="ineligible">
+              Ineligible
+            </option>
+
+            <option value="needs_review">
+              Needs Review
+            </option>
+          </select>
+        </label>
+
+      </div>
+
+
+      {manageError && (
+        <div className="mt-3 border border-scoreboard-red/60 p-3">
+          <p className="text-sm text-scoreboard-muted">
+            {manageError}
+          </p>
+        </div>
+      )}
+
+
+      <div className="mt-4 flex gap-2">
+
+        <Button
+          type="button"
+          disabled={manageSaving}
+          onClick={onSave}
+          className="
+            rounded-none
+            bg-scoreboard-amber
+            font-black
+            uppercase
+            tracking-[0.10em]
+            text-scoreboard-dark
+          "
+        >
+          {manageSaving
+            ? "Saving..."
+            : "Save"}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={manageSaving}
+          onClick={onCancel}
+          className="
+            rounded-none
+            border-scoreboard-cream/30
+            bg-transparent
+            font-black
+            uppercase
+            text-scoreboard-cream
+          "
+        >
+          Cancel
+        </Button>
+
+      </div>
+
+    </div>
   )
 }
 
