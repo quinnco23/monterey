@@ -34,3 +34,5 @@ entrypoint = "./functions/send-player-team-invitation/index.ts"
 
 [functions.stripe-tournament-webhook]
 verify_jwt = false 
+[functions.send-tournament-invite]
+verify_jwt = false

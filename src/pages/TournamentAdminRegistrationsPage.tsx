@@ -817,16 +817,18 @@ if (!roster) {
 const canApprove =
   blockers.length === 0
 
-const readinessState:
+  const readinessState:
+  | "approved"
   | "ready"
   | "blocked"
   | "waitlisted" =
-  registration.status ===
-  "waitlisted"
-    ? "waitlisted"
-    : canApprove
-      ? "ready"
-      : "blocked"
+  registration.status === "approved"
+    ? "approved"
+    : registration.status === "waitlisted"
+      ? "waitlisted"
+      : canApprove
+        ? "ready"
+        : "blocked"
 
                     return (
                       <article

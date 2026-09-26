@@ -486,6 +486,59 @@ upcomingEvents.filter(
   void loadDashboard()
 }, [organizationId])
 
+async function testTournamentInvite() {
+  const {
+    data,
+    error,
+  } = await supabase.functions.invoke(
+    "send-tournament-invite",
+    {
+      body: {
+        invitationId:
+          "1d0a2466-16d7-4457-b212-980f0e50b506",
+      },
+    }
+  )
+
+  console.log(
+    "INVITE DATA:",
+    data
+  )
+
+  console.log(
+    "INVITE ERROR:",
+    error
+  )
+
+  if (error) {
+    try {
+      const context =
+        (error as any)?.context
+
+      if (context) {
+        const body =
+          await context
+            .clone()
+            .json()
+
+            console.log(
+              "INVITE ERROR BODY:",
+              JSON.stringify(
+                body,
+                null,
+                2
+              )
+            )
+      }
+    } catch (bodyError) {
+      console.log(
+        "COULD NOT READ INVITE ERROR BODY:",
+        bodyError
+      )
+    }
+  }
+}
+
     const scheduledTournaments =
   events.filter(
     (event) =>
@@ -687,6 +740,33 @@ const upcomingSchedule =
                 </Link>
   
               </div>
+
+              <Link
+  to="/dashboard/admin/tournament-invites/new"
+  className="
+    block
+    border-4
+    rounded-2xl
+    border-scoreboard-amber
+    bg-scoreboard-green
+    p-5
+    transition-colors
+    hover:border-scoreboard-cream
+    text-scoreboard-red
+  "
+>
+  <p className="scoreboard-label text-scoreboard-red">
+    Team Acquisition
+  </p>
+
+  <h3 className="mt-2 text-xl font-black uppercase tracking-[0.05em]">
+    Invite Team To Tournament
+  </h3>
+
+  <p className="mt-3 text-sm text-scoreboard-muted">
+    Send a tournament registration invitation by email.
+  </p>
+</Link>
             </div>
   
           </div>
@@ -716,6 +796,193 @@ const upcomingSchedule =
   />
 
 </div>
+
+</section>
+
+{/* TEAMS */}
+<section className="mx-auto max-w-7xl px-6 pb-8">
+
+  <div className="flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
+
+    <div>
+      
+
+      <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
+        Teams
+      </h2>
+
+      <Link
+  to={`/dashboard/organizations/${organization.id}/players`}
+  className="
+    block
+    border
+    border-scoreboard-cream/20
+    bg-scoreboard-green
+    p-5
+  "
+>
+  
+
+  <div className="mt-2 flex items-end justify-between">
+    <div>
+      <h2 className="text-xl font-bold text-scoreboard-cream">
+        Player Pool
+      </h2>
+
+      <p className="mt-1 text-sm text-scoreboard-muted">
+        Manage players and build team rosters
+      </p>
+    </div>
+
+    <span className="text-scoreboard-amber px-3">
+      View →
+    </span>
+  </div>
+</Link>
+    </div>
+
+    <Link
+      to={`/dashboard/organizations/${organization.id}/teams/new`}
+      className="
+        text-xs
+        font-black
+        uppercase
+        tracking-[0.14em]
+        text-scoreboard-cream
+        transition-colors
+        hover:text-scoreboard-amber
+      "
+    >
+      + Create Team
+    </Link>
+
+  </div>
+
+  {teams.length === 0 ? (
+
+    <div className="mt-6 border border-scoreboard-cream/25 bg-scoreboard-green p-8">
+
+      <p className="scoreboard-label text-scoreboard-amber">
+        No Teams
+      </p>
+
+      <h3 className="mt-3 text-xl font-black uppercase tracking-[0.06em]">
+        Create Your First Team
+      </h3>
+
+      <p className="mt-3 text-sm text-scoreboard-muted">
+        Add a team to begin building rosters, registering for tournaments,
+        and connecting games to GameOn.
+      </p>
+
+      <Link
+        to={`/dashboard/organizations/${organization.id}/teams/new`}
+        className="
+          mt-6
+          inline-flex
+          items-center
+          gap-2
+          border
+          border-scoreboard-cream
+          bg-scoreboard-cream
+          px-5
+          py-3
+          text-xs
+          font-black
+          uppercase
+          tracking-[0.12em]
+          text-scoreboard-dark
+          hover:bg-scoreboard-amber
+        "
+      >
+        Create Team
+        <ArrowRight className="h-4 w-4 "  />
+      </Link>
+
+    </div>
+
+  ) : (
+
+    <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
+      {teams.map((team) => (
+
+        <Link
+          key={team.id}
+          to={`/dashboard/organizations/${organization.id}/teams/${team.id}`}
+          className="
+            group
+            block
+            cursor-pointer
+            border
+            border-scoreboard-cream/25
+            bg-scoreboard-green
+            p-6
+            transition-colors
+            hover:border-scoreboard-amber/60
+            hover:bg-scoreboard-light
+          "
+        >
+
+          <div className="flex items-start justify-between gap-4">
+
+            <div>
+              <p className="scoreboard-label text-scoreboard-amber">
+                {team.age_group}
+
+                {team.classification &&
+                  ` • ${team.classification.toUpperCase()}`}
+              </p>
+
+              <h3 className="mt-3 text-2xl font-black uppercase leading-tight tracking-[0.05em]">
+                {team.name}
+              </h3>
+            </div>
+
+            <ShieldCheck className="h-5 w-5 shrink-0 text-scoreboard-amber" />
+
+          </div>
+
+          <div className="mt-5 space-y-1 text-sm text-scoreboard-muted">
+
+            {team.season_year && (
+              <p>{team.season_year} Season</p>
+            )}
+
+            {(team.city || team.state) && (
+              <p>
+                {[team.city, team.state]
+                  .filter(Boolean)
+                  .join(", ")}
+              </p>
+            )}
+
+          </div>
+
+          <div className="mt-7 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
+
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber ">
+              Team Dashboard
+            </span>
+
+            <ArrowRight
+              className="
+                h-4
+                w-4
+                transition-transform
+                group-hover:translate-x-1
+              "
+            />
+
+          </div>
+
+        </Link>
+
+      ))}
+
+    </div>
+
+  )}
 
 </section>
 
@@ -1237,192 +1504,7 @@ const upcomingSchedule =
 </section>
 
 
-{/* TEAMS */}
-<section className="mx-auto max-w-7xl px-6 pb-8">
 
-  <div className="flex items-end justify-between border-b border-scoreboard-cream/20 pb-4">
-
-    <div>
-      
-
-      <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em]">
-        Teams
-      </h2>
-
-      <Link
-  to={`/dashboard/organizations/${organization.id}/players`}
-  className="
-    block
-    border
-    border-scoreboard-cream/20
-    bg-scoreboard-green
-    p-5
-  "
->
-  
-
-  <div className="mt-2 flex items-end justify-between">
-    <div>
-      <h2 className="text-xl font-bold text-scoreboard-cream">
-        Player Pool
-      </h2>
-
-      <p className="mt-1 text-sm text-scoreboard-muted">
-        Manage players and build team rosters
-      </p>
-    </div>
-
-    <span className="text-scoreboard-amber px-3">
-      View →
-    </span>
-  </div>
-</Link>
-    </div>
-
-    <Link
-      to={`/dashboard/organizations/${organization.id}/teams/new`}
-      className="
-        text-xs
-        font-black
-        uppercase
-        tracking-[0.14em]
-        text-scoreboard-cream
-        transition-colors
-        hover:text-scoreboard-amber
-      "
-    >
-      + Create Team
-    </Link>
-
-  </div>
-
-  {teams.length === 0 ? (
-
-    <div className="mt-6 border border-scoreboard-cream/25 bg-scoreboard-green p-8">
-
-      <p className="scoreboard-label text-scoreboard-amber">
-        No Teams
-      </p>
-
-      <h3 className="mt-3 text-xl font-black uppercase tracking-[0.06em]">
-        Create Your First Team
-      </h3>
-
-      <p className="mt-3 text-sm text-scoreboard-muted">
-        Add a team to begin building rosters, registering for tournaments,
-        and connecting games to GameOn.
-      </p>
-
-      <Link
-        to={`/dashboard/organizations/${organization.id}/teams/new`}
-        className="
-          mt-6
-          inline-flex
-          items-center
-          gap-2
-          border
-          border-scoreboard-cream
-          bg-scoreboard-cream
-          px-5
-          py-3
-          text-xs
-          font-black
-          uppercase
-          tracking-[0.12em]
-          text-scoreboard-dark
-          hover:bg-scoreboard-amber
-        "
-      >
-        Create Team
-        <ArrowRight className="h-4 w-4 "  />
-      </Link>
-
-    </div>
-
-  ) : (
-
-    <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-
-      {teams.map((team) => (
-
-        <Link
-          key={team.id}
-          to={`/dashboard/organizations/${organization.id}/teams/${team.id}`}
-          className="
-            group
-            block
-            cursor-pointer
-            border
-            border-scoreboard-cream/25
-            bg-scoreboard-green
-            p-6
-            transition-colors
-            hover:border-scoreboard-amber/60
-            hover:bg-scoreboard-light
-          "
-        >
-
-          <div className="flex items-start justify-between gap-4">
-
-            <div>
-              <p className="scoreboard-label text-scoreboard-amber">
-                {team.age_group}
-
-                {team.classification &&
-                  ` • ${team.classification.toUpperCase()}`}
-              </p>
-
-              <h3 className="mt-3 text-2xl font-black uppercase leading-tight tracking-[0.05em]">
-                {team.name}
-              </h3>
-            </div>
-
-            <ShieldCheck className="h-5 w-5 shrink-0 text-scoreboard-amber" />
-
-          </div>
-
-          <div className="mt-5 space-y-1 text-sm text-scoreboard-muted">
-
-            {team.season_year && (
-              <p>{team.season_year} Season</p>
-            )}
-
-            {(team.city || team.state) && (
-              <p>
-                {[team.city, team.state]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-            )}
-
-          </div>
-
-          <div className="mt-7 flex items-center justify-between border-t border-scoreboard-cream/20 pt-4">
-
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-scoreboard-amber ">
-              Team Dashboard
-            </span>
-
-            <ArrowRight
-              className="
-                h-4
-                w-4
-                transition-transform
-                group-hover:translate-x-1
-              "
-            />
-
-          </div>
-
-        </Link>
-
-      ))}
-
-    </div>
-
-  )}
-
-</section>
 
 
 {/* DASHBOARD PANELS */}

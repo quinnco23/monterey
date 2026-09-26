@@ -99,6 +99,8 @@ import { TournamentRegistrationPaymentSuccessPage } from "./pages/TournamentRegi
 
 import { TeamInsurancePage } from "./pages/team-insurance-page"
 import { PlatformInsuranceReviewPage } from "./pages/team-insurance-review-page"
+import PlatformAdminTournamentInvitePage from "./pages/platform-admin-tournament-Invite-page"
+import TournamentInviteLandingPage from "./tournament-invite-landing-page"
 
 
 
@@ -212,6 +214,11 @@ export default function App() {
 <Route
   path="/staff/register"
   element={<StaffRegisterPage />}
+/>
+
+<Route
+  path="/invite/tournament/:token"
+  element={<TournamentInviteLandingPage />}
 />
 
 
@@ -481,6 +488,13 @@ export default function App() {
 <Route
   path="/dashboard/tournaments/:tournamentId/registrations/:registrationId/roster"
   element={<TournamentAdminRosterReviewPage />}
+/>
+
+<Route
+  path="/dashboard/admin/tournament-invites/new"
+  element={
+    <PlatformAdminTournamentInvitePage />
+  }
 />
 
           </Route>

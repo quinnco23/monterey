@@ -2169,6 +2169,176 @@ const [rosterStatusError, setRosterStatusError] =
 
         <div className="space-y-6">
 
+            {/* SCHEDULE */}
+
+            <div className="scoreboard-panel p-4">
+
+<div className="border border-scoreboard-cream/30 bg-scoreboard-green p-6">
+
+  <div className="flex items-start justify-between gap-4">
+
+    <div>
+
+      <p className="scoreboard-label text-scoreboard-amber">
+        Schedule
+      </p>
+
+      <h2 className="mt-2 text-xl font-black uppercase tracking-[0.07em]">
+        Upcoming
+      </h2>
+
+    </div>
+
+    <CalendarDays className="h-5 w-5 text-scoreboard-amber" />
+
+  </div>
+
+  <div className="mt-5 border-t border-scoreboard-cream/20">
+
+    {events.length === 0 ? (
+      <div className="py-5">
+
+        <p className="text-sm text-scoreboard-muted">
+          No upcoming events for this
+          team.
+        </p>
+
+      </div>
+    ) : (
+      events.map(
+        (event) => {
+          const start =
+            new Date(
+              event.start_time
+            )
+
+          return (
+            <Link
+              key={
+                event.id
+              }
+              to={
+                event.source ===
+                  "registered_tournament" &&
+                event.tournament_id
+                  ? `/tournaments/${event.tournament_id}`
+                  : `/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`
+              }
+              className="
+                group
+                block
+                border-b
+                border-scoreboard-cream/15
+                py-4
+                last:border-b-0
+              "
+            >
+
+              <div className="flex items-start justify-between gap-4">
+
+                <div className="min-w-0">
+
+                  <p className="scoreboard-label text-scoreboard-amber">
+                    {event.source ===
+                    "registered_tournament"
+                      ? "Registered Tournament"
+                      : event.event_type.replaceAll(
+                          "_",
+                          " "
+                        )}
+                  </p>
+
+                  <p className="mt-2 font-black uppercase tracking-[0.04em] group-hover:text-scoreboard-amber">
+                    {event.title}
+                  </p>
+
+                  <p className="mt-2 text-xs text-scoreboard-muted">
+
+                    {start.toLocaleDateString(
+                      [],
+                      {
+                        weekday:
+                          "short",
+
+                        month:
+                          "short",
+
+                        day:
+                          "numeric",
+                      }
+                    )}
+
+                    {" • "}
+
+                    {start.toLocaleTimeString(
+                      [],
+                      {
+                        hour:
+                          "numeric",
+
+                        minute:
+                          "2-digit",
+                      }
+                    )}
+
+                  </p>
+
+                  {event.location_name && (
+                    <p className="mt-1 text-xs text-scoreboard-muted">
+                      {event.location_name}
+                    </p>
+                  )}
+
+                  {event.source ===
+                    "registered_tournament" && (
+                    <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-scoreboard-amber">
+                      {event.status.replaceAll(
+                        "_",
+                        " "
+                      )}
+                    </p>
+                  )}
+
+                </div>
+
+                <span className="text-scoreboard-amber">
+                  →
+                </span>
+
+              </div>
+
+            </Link>
+          )
+        }
+      )
+    )}
+
+  </div>
+
+  <Link
+    to={`/dashboard/organizations/${organizationId}/schedule`}
+    className="
+      mt-5
+      inline-flex
+      border-t
+      border-scoreboard-cream/20
+      pt-4
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.14em]
+      text-scoreboard-cream
+      hover:text-scoreboard-amber
+    "
+  >
+    View Schedule →
+  </Link>
+
+</div>
+
+</div>
+
+
           {/* STAFF */}
 
           <div className="scoreboard-panel p-4">
@@ -2289,175 +2459,7 @@ const [rosterStatusError, setRosterStatusError] =
             action="Connect GameOn"
           />
 
-          {/* SCHEDULE */}
-
-          <div className="scoreboard-panel p-4">
-
-            <div className="border border-scoreboard-cream/30 bg-scoreboard-green p-6">
-
-              <div className="flex items-start justify-between gap-4">
-
-                <div>
-
-                  <p className="scoreboard-label text-scoreboard-amber">
-                    Schedule
-                  </p>
-
-                  <h2 className="mt-2 text-xl font-black uppercase tracking-[0.07em]">
-                    Upcoming
-                  </h2>
-
-                </div>
-
-                <CalendarDays className="h-5 w-5 text-scoreboard-amber" />
-
-              </div>
-
-              <div className="mt-5 border-t border-scoreboard-cream/20">
-
-                {events.length === 0 ? (
-                  <div className="py-5">
-
-                    <p className="text-sm text-scoreboard-muted">
-                      No upcoming events for this
-                      team.
-                    </p>
-
-                  </div>
-                ) : (
-                  events.map(
-                    (event) => {
-                      const start =
-                        new Date(
-                          event.start_time
-                        )
-
-                      return (
-                        <Link
-                          key={
-                            event.id
-                          }
-                          to={
-                            event.source ===
-                              "registered_tournament" &&
-                            event.tournament_id
-                              ? `/tournaments/${event.tournament_id}`
-                              : `/dashboard/organizations/${organizationId}/schedule/${event.id}/edit`
-                          }
-                          className="
-                            group
-                            block
-                            border-b
-                            border-scoreboard-cream/15
-                            py-4
-                            last:border-b-0
-                          "
-                        >
-
-                          <div className="flex items-start justify-between gap-4">
-
-                            <div className="min-w-0">
-
-                              <p className="scoreboard-label text-scoreboard-amber">
-                                {event.source ===
-                                "registered_tournament"
-                                  ? "Registered Tournament"
-                                  : event.event_type.replaceAll(
-                                      "_",
-                                      " "
-                                    )}
-                              </p>
-
-                              <p className="mt-2 font-black uppercase tracking-[0.04em] group-hover:text-scoreboard-amber">
-                                {event.title}
-                              </p>
-
-                              <p className="mt-2 text-xs text-scoreboard-muted">
-
-                                {start.toLocaleDateString(
-                                  [],
-                                  {
-                                    weekday:
-                                      "short",
-
-                                    month:
-                                      "short",
-
-                                    day:
-                                      "numeric",
-                                  }
-                                )}
-
-                                {" • "}
-
-                                {start.toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour:
-                                      "numeric",
-
-                                    minute:
-                                      "2-digit",
-                                  }
-                                )}
-
-                              </p>
-
-                              {event.location_name && (
-                                <p className="mt-1 text-xs text-scoreboard-muted">
-                                  {event.location_name}
-                                </p>
-                              )}
-
-                              {event.source ===
-                                "registered_tournament" && (
-                                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-scoreboard-amber">
-                                  {event.status.replaceAll(
-                                    "_",
-                                    " "
-                                  )}
-                                </p>
-                              )}
-
-                            </div>
-
-                            <span className="text-scoreboard-amber">
-                              →
-                            </span>
-
-                          </div>
-
-                        </Link>
-                      )
-                    }
-                  )
-                )}
-
-              </div>
-
-              <Link
-                to={`/dashboard/organizations/${organizationId}/schedule`}
-                className="
-                  mt-5
-                  inline-flex
-                  border-t
-                  border-scoreboard-cream/20
-                  pt-4
-                  text-xs
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-scoreboard-cream
-                  hover:text-scoreboard-amber
-                "
-              >
-                View Schedule →
-              </Link>
-
-            </div>
-
-          </div>
-
+        
         </div>
 
       </section>
