@@ -369,6 +369,113 @@ export function SiteHeader() {
           {label}
         </Link>
       ))}
+
+      {/* MOBILE AUTH */}
+{!loading && (
+  <div className="mt-4 grid gap-3 border-t border-scoreboard-cream/20 pt-4">
+
+    {user ? (
+      <>
+        <Link
+          to="/dashboard"
+          onClick={closeMobileMenu}
+          className="
+            flex
+            min-h-12
+            w-full
+            items-center
+            justify-center
+            border
+            border-scoreboard-cream
+            px-5
+            py-3
+            text-sm
+            font-black
+            uppercase
+            tracking-[0.14em]
+            text-scoreboard-cream
+          "
+        >
+          Dashboard
+        </Link>
+
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="
+            flex
+            min-h-12
+            w-full
+            items-center
+            justify-center
+            border
+            border-scoreboard-cream/40
+            px-5
+            py-3
+            text-sm
+            font-black
+            uppercase
+            tracking-[0.14em]
+            text-scoreboard-cream
+          "
+        >
+          Sign Out
+        </button>
+      </>
+    ) : (
+      <>
+        <Link
+          to="/login"
+          onClick={closeMobileMenu}
+          className="
+            flex
+            min-h-12
+            w-full
+            items-center
+            justify-center
+            border
+            border-scoreboard-cream/40
+            px-5
+            py-3
+            text-sm
+            font-black
+            uppercase
+            tracking-[0.14em]
+            text-scoreboard-cream
+          "
+        >
+          Sign In
+        </Link>
+
+        <Link
+          to="/register"
+          onClick={closeMobileMenu}
+          className="
+            flex
+            min-h-12
+            w-full
+            items-center
+            justify-center
+            border
+            border-scoreboard-cream
+            bg-scoreboard-cream
+            px-5
+            py-3
+            text-sm
+            font-black
+            uppercase
+            tracking-[0.14em]
+            text-scoreboard-dark
+            hover:bg-scoreboard-amber
+          "
+        >
+          Create Account
+        </Link>
+      </>
+    )}
+
+  </div>
+)}
 {/* MOBILE CTA BUTTONS */}
 <div className="mt-4 grid gap-3">
 
