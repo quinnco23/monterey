@@ -105,6 +105,14 @@ export function EditOrganizationEventPage() {
   const [endDate, setEndDate] =
     useState("")
 
+    const [
+      tournamentDuration,
+      setTournamentDuration,
+    ] =
+      useState<"single" | "multi">(
+        "single"
+      )
+
   const [startTime, setStartTime] =
     useState("")
 
@@ -414,8 +422,17 @@ setDivisions(
             existingEvent.end_time
           )
 
-        setEndDate(
-          [
+          const startDateKey = [
+            start.getFullYear(),
+            String(
+              start.getMonth() + 1
+            ).padStart(2, "0"),
+            String(
+              start.getDate()
+            ).padStart(2, "0"),
+          ].join("-")
+          
+          const endDateKey = [
             end.getFullYear(),
             String(
               end.getMonth() + 1
@@ -424,7 +441,16 @@ setDivisions(
               end.getDate()
             ).padStart(2, "0"),
           ].join("-")
-        )
+          
+          setTournamentDuration(
+            startDateKey === endDateKey
+              ? "single"
+              : "multi"
+          )
+
+          setEndDate(
+            endDateKey
+          )
 
         setEndTime(
           [
@@ -493,11 +519,13 @@ setDivisions(
 
     if (
       eventType === "tournament" &&
+      tournamentDuration === "multi" &&
       !endDate
     ) {
       setError(
         "Tournament end date is required."
       )
+    
       return
     }
 
@@ -506,8 +534,9 @@ setDivisions(
         `${eventDate}T${startTime}:00`
       )
 
-    const effectiveEndDate =
-      eventType === "tournament"
+      const effectiveEndDate =
+      eventType === "tournament" &&
+      tournamentDuration === "multi"
         ? endDate
         : eventDate
 
@@ -600,8 +629,8 @@ setDivisions(
             start_date:
               eventDate,
   
-            end_date:
-              endDate,
+              end_date:
+              effectiveEndDate,
   
             status:
               "registration_open",
@@ -655,8 +684,8 @@ setDivisions(
             start_date:
               eventDate,
   
-            end_date:
-              endDate,
+              end_date:
+              effectiveEndDate,
   
             status:
               "registration_open",
@@ -703,8 +732,8 @@ setDivisions(
           start_date:
             eventDate,
   
-          end_date:
-            endDate,
+            end_date:
+            effectiveEndDate,
   
           status:
             publiclyRegisterable
@@ -1166,161 +1195,263 @@ updated_at:
             {/* DATE / TIMES */}
 
             {eventType === "tournament" ? (
-              <div className="grid gap-5 sm:grid-cols-2">
+  <div className="space-y-5">
 
-                <label className="block">
+    {/* TOURNAMENT DURATION */}
 
-                  <span className="scoreboard-label text-scoreboard-cream">
-                    Start Date
-                  </span>
+    <div>
+      <span className="scoreboard-label text-scoreboard-cream">
+        Tournament Duration
+      </span>
 
-                  <div className="relative mt-2">
+      <div className="mt-2 grid grid-cols-2 gap-3">
 
-                    <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+        <button
+          type="button"
+          onClick={() => {
+            setTournamentDuration(
+              "single"
+            )
 
-                    <input
-                      type="date"
-                      value={eventDate}
-                      onChange={(e) =>
-                        setEventDate(
-                          e.target.value
-                        )
-                      }
-                      required
-                      className="
-                        w-full
-                        min-w-0
-                        rounded-none
-                        border
-                        border-scoreboard-cream/30
-                        bg-scoreboard-cream
-                        py-3
-                        pl-10
-                        pr-3
-                        text-base
-                        text-scoreboard-dark
-                      "
-                    />
+            setEndDate("")
+          }}
+          className={`
+            border
+            px-4
+            py-3
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.10em]
+            transition-colors
+            ${
+              tournamentDuration ===
+              "single"
+                ? "border-scoreboard-amber bg-scoreboard-amber text-scoreboard-dark"
+                : "border-scoreboard-cream/30 bg-transparent text-scoreboard-cream hover:border-scoreboard-amber"
+            }
+          `}
+        >
+          Single Day
+        </button>
 
-                  </div>
 
-                </label>
+        <button
+          type="button"
+          onClick={() =>
+            setTournamentDuration(
+              "multi"
+            )
+          }
+          className={`
+            border
+            px-4
+            py-3
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.10em]
+            transition-colors
+            ${
+              tournamentDuration ===
+              "multi"
+                ? "border-scoreboard-amber bg-scoreboard-amber text-scoreboard-dark"
+                : "border-scoreboard-cream/30 bg-transparent text-scoreboard-cream hover:border-scoreboard-amber"
+            }
+          `}
+        >
+          Multi-Day
+        </button>
 
-                <label className="block">
+      </div>
+    </div>
 
-                  <span className="scoreboard-label text-scoreboard-cream">
-                    End Date
-                  </span>
 
-                  <div className="relative mt-2">
+    {/* DATES */}
 
-                    <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+    <div
+      className={
+        tournamentDuration ===
+        "multi"
+          ? "grid gap-5 sm:grid-cols-2"
+          : "grid gap-5"
+      }
+    >
 
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) =>
-                        setEndDate(
-                          e.target.value
-                        )
-                      }
-                      required
-                      className="
-                        w-full
-                        min-w-0
-                        rounded-none
-                        border
-                        border-scoreboard-cream/30
-                        bg-scoreboard-cream
-                        py-3
-                        pl-10
-                        pr-3
-                        text-base
-                        text-scoreboard-dark
-                      "
-                    />
+      <label className="block">
 
-                  </div>
+        <span className="scoreboard-label text-scoreboard-cream">
+          {tournamentDuration ===
+          "multi"
+            ? "Start Date"
+            : "Tournament Date"}
+        </span>
 
-                </label>
+        <div className="relative mt-2">
 
-                <label className="block">
+          <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
 
-                  <span className="scoreboard-label text-scoreboard-cream">
-                    Start Time
-                  </span>
+          <input
+            type="date"
+            value={eventDate}
+            onChange={(e) =>
+              setEventDate(
+                e.target.value
+              )
+            }
+            required
+            className="
+              w-full
+              min-w-0
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              py-3
+              pl-10
+              pr-3
+              text-base
+              text-scoreboard-dark
+            "
+          />
 
-                  <div className="relative mt-2">
+        </div>
 
-                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+      </label>
 
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) =>
-                        setStartTime(
-                          e.target.value
-                        )
-                      }
-                      required
-                      className="
-                        w-full
-                        min-w-0
-                        rounded-none
-                        border
-                        border-scoreboard-cream/30
-                        bg-scoreboard-cream
-                        py-3
-                        pl-10
-                        pr-3
-                        text-base
-                        text-scoreboard-dark
-                      "
-                    />
 
-                  </div>
+      {tournamentDuration ===
+        "multi" && (
+        <label className="block">
 
-                </label>
+          <span className="scoreboard-label text-scoreboard-cream">
+            End Date
+          </span>
 
-                <label className="block">
+          <div className="relative mt-2">
 
-                  <span className="scoreboard-label text-scoreboard-cream">
-                    End Time
-                  </span>
+            <CalendarDays className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
 
-                  <div className="relative mt-2">
+            <input
+              type="date"
+              value={endDate}
+              min={
+                eventDate ||
+                undefined
+              }
+              onChange={(e) =>
+                setEndDate(
+                  e.target.value
+                )
+              }
+              required
+              className="
+                w-full
+                min-w-0
+                rounded-none
+                border
+                border-scoreboard-cream/30
+                bg-scoreboard-cream
+                py-3
+                pl-10
+                pr-3
+                text-base
+                text-scoreboard-dark
+              "
+            />
 
-                    <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+          </div>
 
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) =>
-                        setEndTime(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        min-w-0
-                        rounded-none
-                        border
-                        border-scoreboard-cream/30
-                        bg-scoreboard-cream
-                        py-3
-                        pl-10
-                        pr-3
-                        text-base
-                        text-scoreboard-dark
-                      "
-                    />
+        </label>
+      )}
 
-                  </div>
+    </div>
 
-                </label>
 
-              </div>
-            ) : (
+    {/* TIMES */}
+
+    <div className="grid gap-5 sm:grid-cols-2">
+
+      <label className="block">
+
+        <span className="scoreboard-label text-scoreboard-cream">
+          Start Time
+        </span>
+
+        <div className="relative mt-2">
+
+          <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) =>
+              setStartTime(
+                e.target.value
+              )
+            }
+            required
+            className="
+              w-full
+              min-w-0
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              py-3
+              pl-10
+              pr-3
+              text-base
+              text-scoreboard-dark
+            "
+          />
+
+        </div>
+
+      </label>
+
+
+      <label className="block">
+
+        <span className="scoreboard-label text-scoreboard-cream">
+          End Time
+        </span>
+
+        <div className="relative mt-2">
+
+          <Clock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-scoreboard-dark/60" />
+
+          <input
+            type="time"
+            value={endTime}
+            onChange={(e) =>
+              setEndTime(
+                e.target.value
+              )
+            }
+            className="
+              w-full
+              min-w-0
+              rounded-none
+              border
+              border-scoreboard-cream/30
+              bg-scoreboard-cream
+              py-3
+              pl-10
+              pr-3
+              text-base
+              text-scoreboard-dark
+            "
+          />
+
+        </div>
+
+      </label>
+
+    </div>
+
+  </div>
+) : (
               <div className="grid gap-5 sm:grid-cols-3">
 
                 <label className="block">
@@ -1461,108 +1592,97 @@ updated_at:
             sm:grid-cols-[1fr_1fr_160px_auto]
           "
         >
-          {/* AGE GROUP */}
-          <input
-            value={division.age_group}
-            onChange={(e) => {
-              const next = [...divisions]
+        {/* AGE GROUP */}
+<label className="block">
+  <span className="scoreboard-label text-scoreboard-cream">
+    Age Group
+  </span>
 
-              next[index] = {
-                ...next[index],
-                age_group: e.target.value,
-              }
+  <input
+    value={division.age_group}
+    onChange={(e) => {
+      const next = [...divisions]
 
-              setDivisions(next)
-            }}
-            placeholder="10U"
-            className="
-              w-full
-              rounded-none
-              border
-              border-scoreboard-cream/30
-              bg-scoreboard-cream
-              px-3
-              py-3
-              text-scoreboard-dark
-            "
-          />
+      next[index] = {
+        ...next[index],
+        age_group: e.target.value,
+      }
 
-          {/* DIVISION NAME */}
-          <input
-            value={division.name}
-            onChange={(e) => {
-              const next = [...divisions]
+      setDivisions(next)
+    }}
+    placeholder="10U"
+    className="
+      mt-2
+      w-full
+      rounded-none
+      border
+      border-scoreboard-cream/30
+      bg-scoreboard-cream
+      px-3
+      py-3
+      text-scoreboard-dark
+    "
+  />
+</label>
 
-              next[index] = {
-                ...next[index],
-                name: e.target.value,
-              }
+        {/* ENTRY FEE */}
+<label className="block">
+  <span className="scoreboard-label text-scoreboard-cream">
+    Entry Fee
+  </span>
 
-              setDivisions(next)
-            }}
-            placeholder="Open Division"
-            className="
-              w-full
-              rounded-none
-              border
-              border-scoreboard-cream/30
-              bg-scoreboard-cream
-              px-3
-              py-3
-              text-scoreboard-dark
-            "
-          />
+  <div className="relative mt-2">
+    <span
+      className="
+        pointer-events-none
+        absolute
+        left-3
+        top-3
+        text-scoreboard-dark/60
+      "
+    >
+      $
+    </span>
 
-          {/* ENTRY FEE */}
-          <div className="relative">
-            <span
-              className="
-                pointer-events-none
-                absolute
-                left-3
-                top-3
-                text-scoreboard-dark/60
-              "
-            >
-              $
-            </span>
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={
+        division.registration_fee_cents > 0
+          ? division.registration_fee_cents / 100
+          : ""
+      }
+      onChange={(e) => {
+        const next = [...divisions]
 
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={
-                division.registration_fee_cents / 100
-              }
-              onChange={(e) => {
-                const next = [...divisions]
+        next[index] = {
+          ...next[index],
 
-                next[index] = {
-                  ...next[index],
+          registration_fee_cents:
+            Math.round(
+              Number(e.target.value || 0) *
+                100
+            ),
+        }
 
-                  registration_fee_cents:
-                    Math.round(
-                      Number(e.target.value || 0) *
-                        100
-                    ),
-                }
-
-                setDivisions(next)
-              }}
-              placeholder="750"
-              className="
-                w-full
-                rounded-none
-                border
-                border-scoreboard-cream/30
-                bg-scoreboard-cream
-                py-3
-                pl-7
-                pr-3
-                text-scoreboard-dark
-              "
-            />
-          </div>
+        setDivisions(next)
+      }}
+      placeholder="750"
+      className="
+        w-full
+        rounded-none
+        border
+        border-scoreboard-cream/30
+        bg-scoreboard-cream
+        py-3
+        pl-7
+        pr-3
+        text-scoreboard-dark
+      "
+    />
+  </div>
+</label>
 
           {/* REMOVE */}
           <button
@@ -1575,14 +1695,16 @@ updated_at:
               )
             }
             className="
-              border
-              border-scoreboard-cream/30
-              px-4
-              text-xs
-              font-black
-              uppercase
-              tracking-[0.10em]
-              hover:border-scoreboard-amber
+             mt-2
+            border
+            border-scoreboard-cream/30
+            px-4
+            py-3
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.10em]
+            hover:border-scoreboard-amber
             "
           >
             Remove

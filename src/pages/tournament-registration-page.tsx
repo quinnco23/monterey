@@ -2394,13 +2394,13 @@ export function TournamentRegistrationPage() {
                           />
 
                           <span className="text-sm leading-6 text-scoreboard-muted">
-                            I confirm this is the tournament roster I want to submit for{" "}
+                            I confirm this is the tournament roster I want to submit for{" "} 
                             <strong className="text-scoreboard-cream">
                               {
                                 tournament.name
                               }
                             </strong>
-                            .
+                            and all players meet eligibility requirements for their respective division. 
                           </span>
 
                         </label>
@@ -2507,18 +2507,18 @@ export function TournamentRegistrationPage() {
                   </div>
 
                   <p className="mt-4 text-xs uppercase tracking-[0.08em] text-scoreboard-muted">
-                    Test payment mode — no card will be charged.
+                  Secure payment processed by Stripe.
                   </p>
 
                 </div>
               )}
 
 
-              {/* INSURANCE */}
+               INSURANCE
 
               <div className="border border-scoreboard-cream/20 bg-scoreboard-dark p-5">
 
-                <p className="scoreboard-label text-scoreboard-amber">
+                {/*<p className="scoreboard-label text-scoreboard-amber">
                   Insurance & Eligibility
                 </p>
 
@@ -2601,10 +2601,10 @@ export function TournamentRegistrationPage() {
                     </p>
 
                   </div>
-                ) : null}
+                ) : null} */}
 
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {/* <div className="mt-5 grid gap-4 sm:grid-cols-2">
 
                   <label className="block">
 
@@ -2705,7 +2705,7 @@ export function TournamentRegistrationPage() {
 
                   </label>
 
-                </div>
+                </div> */}
 
 
                 <div className="mt-6 space-y-4">

@@ -112,6 +112,8 @@ type TeamStaffMember = {
   } | null
 }
 
+
+
 export function TeamDashboardPage() {
   const {
     organizationId,
@@ -150,6 +152,16 @@ export function TeamDashboardPage() {
   const [staff, setStaff] =
     useState<TeamStaffMember[]>([])
 
+    const [
+      addingSelfAsCoach,
+      setAddingSelfAsCoach,
+    ] = useState(false)
+    
+    const [
+      staffActionError,
+      setStaffActionError,
+    ] = useState("")
+
     const [managingRosterPlayerId, setManagingRosterPlayerId] =
   useState<string | null>(null)
 
@@ -170,6 +182,234 @@ const [manageError, setManageError] =
 
 const [rosterStatusError, setRosterStatusError] =
   useState("")
+
+  async function refreshTeamStaff() {
+    if (
+      !organizationId ||
+      !teamId
+    ) {
+      return
+    }
+  
+    const {
+      data: staffRows,
+      error: staffError,
+    } = await supabase
+      .from("team_members")
+      .select(`
+        id,
+        user_id,
+        role,
+        title,
+        active
+      `)
+      .eq(
+        "team_id",
+        teamId
+      )
+      .eq(
+        "organization_id",
+        organizationId
+      )
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "role"
+      )
+  
+    if (staffError) {
+      console.error(
+        "TEAM STAFF REFRESH ERROR:",
+        staffError
+      )
+  
+      setStaffActionError(
+        staffError.message
+      )
+  
+      return
+    }
+  
+    const staffUserIds =
+      (staffRows ?? []).map(
+        (member) =>
+          member.user_id
+      )
+  
+    let profileRows: {
+      id: string
+      first_name: string | null
+      last_name: string | null
+      email: string | null
+    }[] = []
+  
+    if (
+      staffUserIds.length > 0
+    ) {
+      const {
+        data: profilesData,
+        error: profilesError,
+      } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email
+        `)
+        .in(
+          "id",
+          staffUserIds
+        )
+  
+      if (profilesError) {
+        console.error(
+          "TEAM STAFF PROFILE REFRESH ERROR:",
+          profilesError
+        )
+  
+        setStaffActionError(
+          profilesError.message
+        )
+  
+        return
+      }
+  
+      profileRows =
+        profilesData ?? []
+    }
+  
+    const normalizedStaff:
+      TeamStaffMember[] =
+      (staffRows ?? []).map(
+        (member) => ({
+          id:
+            member.id,
+  
+          user_id:
+            member.user_id,
+  
+          staff_role:
+            member.role,
+  
+          title:
+            member.title,
+  
+          active:
+            member.active,
+  
+          profile:
+            profileRows.find(
+              (profile) =>
+                profile.id ===
+                member.user_id
+            ) ?? null,
+        })
+      )
+  
+    setStaff(
+      normalizedStaff
+    )
+  }
+
+  async function handleAddMyselfAsCoach() {
+    if (!teamId) {
+      return
+    }
+  
+    setAddingSelfAsCoach(
+      true
+    )
+  
+    setStaffActionError(
+      ""
+    )
+  
+    try {
+      const {
+        data,
+        error,
+      } = await supabase.rpc(
+        "add_self_to_team_staff",
+        {
+          target_team_id:
+            teamId,
+  
+          target_role:
+            "coach",
+        }
+      )
+  
+      if (error) {
+        console.error(
+          "ADD SELF AS COACH ERROR:",
+          error
+        )
+  
+        let message =
+          error.message
+  
+        if (
+          message.includes(
+            "NOT_AUTHORIZED"
+          )
+        ) {
+          message =
+            "You do not have permission to manage this team."
+        }
+  
+        if (
+          message.includes(
+            "ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED"
+          )
+        ) {
+          message =
+            "You must be an active member of this organization."
+        }
+  
+        if (
+          message.includes(
+            "TEAM_NOT_FOUND"
+          )
+        ) {
+          message =
+            "The team could not be found."
+        }
+  
+        setStaffActionError(
+          message
+        )
+  
+        return
+      }
+  
+      console.log(
+        "ADDED SELF AS COACH:",
+        data
+      )
+  
+      await refreshTeamStaff()
+  
+    } catch (
+      addCoachError: any
+    ) {
+      console.error(
+        "ADD SELF AS COACH ERROR:",
+        addCoachError
+      )
+  
+      setStaffActionError(
+        addCoachError?.message ??
+          "You could not be added as coach."
+      )
+    } finally {
+      setAddingSelfAsCoach(
+        false
+      )
+    }
+  }
 
   useEffect(() => {
     async function loadTeam() {
@@ -2419,32 +2659,80 @@ const [rosterStatusError, setRosterStatusError] =
 
               </div>
 
-              <Link
-                to={`/dashboard/organizations/${organizationId}/teams/${teamId}/staff/invite`}
-                className="
-                  mt-5
-                  inline-flex
-                  w-full
-                  items-center
-                  justify-center
-                  border
-                  border-scoreboard-amber
-                  bg-scoreboard-amber
-                  px-4
-                  py-3
-                  text-xs
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-scoreboard-dark
-                  transition-colors
-                  hover:bg-scoreboard-cream
-                "
-              >
-                <Plus className="mr-2 h-4 w-4" />
+              {staffActionError && (
+  <div className="mt-4 border border-scoreboard-red/60 bg-scoreboard-dark p-3">
 
-                Invite Coach / Staff
-              </Link>
+    <p className="text-sm text-scoreboard-muted">
+      {staffActionError}
+    </p>
+
+  </div>
+)}
+
+
+<div className="mt-5 space-y-3 border-t border-scoreboard-cream/20 pt-5">
+
+  <Button
+    type="button"
+    disabled={
+      addingSelfAsCoach
+    }
+    onClick={
+      handleAddMyselfAsCoach
+    }
+    className="
+      w-full
+      rounded-none
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-4
+      py-3
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.14em]
+      text-scoreboard-dark
+      hover:bg-scoreboard-cream
+      disabled:opacity-50
+    "
+  >
+    <Plus className="mr-2 h-4 w-4" />
+
+    {addingSelfAsCoach
+      ? "Adding Coach..."
+      : "Add member As Coach"}
+  </Button>
+
+
+  <Link
+    to={`/dashboard/organizations/${organizationId}/teams/${teamId}/staff/invite`}
+    className="
+      inline-flex
+      w-full
+      items-center
+      justify-center
+      border
+      border-scoreboard-cream/30
+      bg-transparent
+      px-4
+      py-3
+      text-xs
+      font-black
+      uppercase
+      tracking-[0.14em]
+      text-scoreboard-cream
+      transition-colors
+      hover:border-scoreboard-amber
+      hover:text-scoreboard-amber
+    "
+  >
+    <Plus className="mr-2 h-4 w-4" />
+
+    Invite Coach / Staff
+  </Link>
+
+</div>
 
             </div>
 

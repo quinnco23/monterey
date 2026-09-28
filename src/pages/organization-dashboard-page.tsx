@@ -105,6 +105,10 @@ import {
     console.log("SESSION EMAIL:", session?.user?.email)
     console.log("SESSION ERROR:", error)
   }
+
+  
+  const [isPlatformAdmin, setIsPlatformAdmin] =
+  useState(false)
     
   async function testAcceptGuardianInvite() {
     const { data, error } = await supabase.rpc(
@@ -125,6 +129,22 @@ import {
 
     setLoading(true)
     setError(null)
+
+    const {
+      data: platformAdmin,
+      error: platformAdminError,
+    } = await supabase.rpc("is_platform_admin")
+    
+    if (platformAdminError) {
+      console.error(
+        "PLATFORM ADMIN CHECK ERROR:",
+        platformAdminError
+      )
+    
+      setIsPlatformAdmin(false)
+    } else {
+      setIsPlatformAdmin(platformAdmin === true)
+    }
 
     const now = new Date().toISOString()
 
@@ -741,32 +761,34 @@ const upcomingSchedule =
   
               </div>
 
-              <Link
-  to="/dashboard/admin/tournament-invites/new"
-  className="
-    block
-    border-4
-    rounded-2xl
-    border-scoreboard-amber
-    bg-scoreboard-green
-    p-5
-    transition-colors
-    hover:border-scoreboard-cream
-    text-scoreboard-red
-  "
->
-  <p className="scoreboard-label text-scoreboard-red">
-    Team Acquisition
-  </p>
+              {isPlatformAdmin && (
+  <Link
+    to="/dashboard/admin/tournament-invites/new"
+    className="
+      block
+      border-4
+      rounded-2xl
+      border-scoreboard-amber
+      bg-scoreboard-green
+      p-5
+      transition-colors
+      hover:border-scoreboard-cream
+      text-scoreboard-red
+    "
+  >
+    <p className="scoreboard-label text-scoreboard-red">
+      Team Acquisition
+    </p>
 
-  <h3 className="mt-2 text-xl font-black uppercase tracking-[0.05em]">
-    Invite Team To Tournament
-  </h3>
+    <h3 className="mt-2 text-xl font-black uppercase tracking-[0.05em]">
+      Invite Team To Tournament
+    </h3>
 
-  <p className="mt-3 text-sm text-scoreboard-muted">
-    Send a tournament registration invitation by email.
-  </p>
-</Link>
+    <p className="mt-3 text-sm text-scoreboard-muted">
+      Send a tournament registration invitation by email.
+    </p>
+  </Link>
+)}
             </div>
   
           </div>

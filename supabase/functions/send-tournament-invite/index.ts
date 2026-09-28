@@ -443,11 +443,11 @@ Deno.serve(async (request) => {
       invitation.team_name
         ? `
           <p style="margin:0 0 16px;">
-            Hi
+            The 
             <strong>${escapeHtml(
               invitation.team_name
             )}</strong>
-            ..Lets play ball!
+            Have been invited to play ball!
           </p>
         `
         : `
@@ -461,7 +461,7 @@ Deno.serve(async (request) => {
     // =========================================
 
     const subject =
-      `You're invited: ${tournament.name}`
+       `MBL Tournament Invitation: ${tournament.name}`
 
     const html = `
 <!doctype html>
@@ -519,7 +519,7 @@ Deno.serve(async (request) => {
                     color:#d9aa45;
                   "
                 >
-                  SCBC Baseball
+                  MBL Baseball
                 </div>
 
                 <h1
@@ -625,7 +625,7 @@ Deno.serve(async (request) => {
                     color:#d7d2c2;
                   "
                 >
-                  Create or sign in to your SCBC account,
+                  Create or sign in to your MBL account,
                   add your organization and team if needed,
                   then complete tournament registration
                   and roster submission online.
@@ -710,7 +710,7 @@ Deno.serve(async (request) => {
           body:
             JSON.stringify({
               from:
-                "SCBC Baseball <sky@spark-sc.com>",
+                "MBL Baseball <sky@spark-sc.com>",
 
               to: [
                 invitation.email,

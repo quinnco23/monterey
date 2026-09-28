@@ -16,7 +16,6 @@ export function SiteHeader() {
   const navItems = [
     ["Tournaments", "/tournaments"],
     ["Teams", "/teams"],
-    ["Book", "/book"],
     ["About", "/about"],
   ]
 
@@ -87,51 +86,100 @@ export function SiteHeader() {
           {/* DESKTOP NAV */}
           <nav className="hidden items-center gap-6 lg:flex">
 
-            {navItems.map(([label, to]) => (
-              <Link
-                key={to}
-                to={to}
-                className="
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.14em]
-                  text-scoreboard-muted
-                  transition-colors
-                  hover:text-scoreboard-amber
-                "
-              >
-                {label}
-              </Link>
-            ))}
+          {navItems.map(([label, to]) => (
+  <Link
+    key={to}
+    to={to}
+    className={
+      label === "theCage"
+        ? `
+          border
+          border-red-500
+          bg-black
+          px-4
+          py-1
+          text-xs
+          font-black
+         
+          tracking-[0.14em]
+          text-white
+          transition-colors
+          hover:bg-scoreboard-cream
+          hover:text-scoreboard-dark
+        `
+        : `
+          text-xs
+          font-bold
+          uppercase
+          tracking-[0.14em]
+          text-scoreboard-muted
+          transition-colors
+          hover:text-scoreboard-amber
+        `
+    }
+  >
+    {label}
+  </Link>
+))}
+ {/* THE CAGE */}
+ {/* <Link
+    to="/book"
+    onClick={closeMobileMenu}
+    className="
+      flex
+      min-h-5
+      w-full
+      items-center
+      justify-center
+      border
+      border-red-500
+      bg-black
+      px-5
+      py-1
+      text-sm
+      font-black
+     
+      tracking-[0.16em]
+      text-w
+      transition-colors
+      hover:border-scoreboard-amber
+      hover:bg-scoreboard-amber
+    "
+  >
+    theCage
+  </Link> */}
 
-<a
-  href={GAMEON_URL}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="
-    hidden
-    items-center
-    gap-2
-    border
-    border-scoreboard-amber
-    bg-scoreboard-amber
-    px-4
-    py-1
-    text-xs
-    font-black
-    uppercase
-    tracking-[0.12em]
-    text-scoreboard-dark
-    transition-colors
-    hover:bg-scoreboard-cream
-    lg:inline-flex
-  "
->
-  <span className="text-[10px] tracking-[0.18em]">
+  {/* GAMEON */}
+  {/* <a
+    href={GAMEON_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={closeMobileMenu}
+    className="
+      flex
+      min-h-5
+      w-full
+      items-center
+      justify-center
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-5
+      py-1
+      text-sm
+      font-black
+      
+      tracking-[0.16em]
+      text-scoreboard-dark
+      transition-colors
+      hover:border-scoreboard-cream
+      hover:bg-scoreboard-cream
+    "
+  >
     GameOn
-  </span>
-</a>
+  </a> */}
+
+
 
           </nav>
 
@@ -236,212 +284,157 @@ export function SiteHeader() {
 
           </div>
 
-          {/* MOBILE MENU BUTTON */}
-          <button
-            type="button"
-            onClick={() =>
-              setMobileOpen((current) => !current)
-            }
-            aria-label="Toggle navigation"
-            aria-expanded={mobileOpen}
-            className="
-              inline-flex
-              h-11
-              w-11
-              shrink-0
-              items-center
-              justify-center
-              border
-              border-scoreboard-cream/30
-              text-scoreboard-cream
-              transition-colors
-              hover:border-scoreboard-amber
-              hover:text-scoreboard-amber
-              lg:hidden
-            "
-          >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
-
-        </div>
-
-        {/* MOBILE MENU */}
-        {mobileOpen && (
-          <div className="border-t border-scoreboard-cream/20 pb-4 lg:hidden">
-
-            <nav className="py-2">
-
-              {navItems.map(([label, to]) => (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={closeMobileMenu}
-                  className="
-                    block
-                    border-b
-                    border-scoreboard-cream/10
-                    py-4
-                    text-sm
-                    font-black
-                    uppercase
-                    tracking-[0.10em]
-                    text-scoreboard-cream
-                    transition-colors
-                    last:border-b-0
-                    hover:text-scoreboard-amber
-                  "
-                >
-                  {label}
-                </Link>
-              ))}
-
-              <a
-  href="https://www.quinnglobal.com/fan"
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={() => setMobileOpen(false)}
+         {/* MOBILE MENU BUTTON */}
+<button
+  type="button"
+  onClick={() =>
+    setMobileOpen((current) => !current)
+  }
+  aria-label="Toggle navigation"
+  aria-expanded={mobileOpen}
   className="
-    gameon-flash-on
-    mt-4
-    flex
-    min-h-12
-    w-full
+    inline-flex
+    h-11
+    w-11
+    shrink-0
     items-center
     justify-center
     border
-    border-scoreboard-amber
-    bg-scoreboard-amber
-    px-5
-    py-3
-    text-sm
-    font-black
-    
-    tracking-[0.16em]
-    text-scoreboard-dark
-    transition-all
-    hover:border-scoreboard-cream
-    hover:bg-scoreboard-cream
+    border-scoreboard-cream/30
+    text-scoreboard-cream
+    transition-colors
+    hover:border-scoreboard-amber
+    hover:text-scoreboard-amber
+    lg:hidden
   "
 >
-  gameOn
-</a>
+  {mobileOpen ? (
+    <X className="h-5 w-5" />
+  ) : (
+    <Menu className="h-5 w-5" />
+  )}
+</button>
 
-            </nav>
+</div>
 
-            {/* MOBILE AUTH */}
-            {!loading && (
-              <div className="mt-3 grid gap-2 border-t border-scoreboard-cream/20 pt-4">
+{/* MOBILE MENU */}
+{mobileOpen && (
+  <div className="border-t border-scoreboard-cream/20 pb-4 lg:hidden">
 
-                {user ? (
-                  <>
-                    <Link
-                      to="/dashboard"
-                      onClick={closeMobileMenu}
-                      className={cn(
-                        buttonVariants({
-                          variant: "outline",
-                        }),
-                        `
-                          w-full
-                          rounded-none
-                          border-scoreboard-cream/40
-                          bg-transparent
-                          text-xs
-                          font-black
-                          uppercase
-                          tracking-[0.10em]
-                          text-scoreboard-cream
-                          hover:bg-scoreboard-light
-                          hover:text-scoreboard-cream
-                        `
-                      )}
-                    >
-                      Dashboard
-                    </Link>
+    <nav className="py-2">
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSignOut}
-                      className="
-                        w-full
-                        rounded-none
-                        border-scoreboard-cream/40
-                        bg-transparent
-                        text-xs
-                        font-black
-                        uppercase
-                        tracking-[0.10em]
-                        text-scoreboard-cream
-                        hover:bg-scoreboard-cream
-                        hover:text-scoreboard-dark
-                      "
-                    >
-                      Sign Out
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      onClick={closeMobileMenu}
-                      className={cn(
-                        buttonVariants({
-                          variant: "outline",
-                        }),
-                        `
-                          w-full
-                          rounded-none
-                          border-scoreboard-cream/40
-                          bg-transparent
-                          text-xs
-                          font-black
-                          uppercase
-                          tracking-[0.10em]
-                          text-scoreboard-cream
-                          hover:bg-scoreboard-light
-                          hover:text-scoreboard-cream
-                        `
-                      )}
-                    >
-                      Sign In
-                    </Link>
+      {navItems.map(([label, to]) => (
+        <Link
+          key={to}
+          to={to}
+          onClick={closeMobileMenu}
+          className={
+            label === "Book"
+              ? `
+                mt-3
+                flex
+                min-h-12
+                w-full
+                items-center
+                justify-center
+                border
+                border-scoreboard-amber
+                bg-scoreboard-amber
+                px-5
+                py-3
+                text-sm
+                font-black
+                uppercase
+                tracking-[0.14em]
+                text-scoreboard-dark
+                transition-colors
+                hover:bg-scoreboard-cream
+              `
+              : `
+                block
+                border-b
+                border-scoreboard-cream/10
+                py-4
+                text-sm
+                font-black
+                uppercase
+                tracking-[0.10em]
+                text-scoreboard-cream
+                transition-colors
+                last:border-b-0
+                hover:text-scoreboard-amber
+              `
+          }
+        >
+          {label}
+        </Link>
+      ))}
+{/* MOBILE CTA BUTTONS */}
+<div className="mt-4 grid gap-3">
 
-                    <Link
-                      to="/register"
-                      onClick={closeMobileMenu}
-                      className={cn(
-                        buttonVariants(),
-                        `
-                          w-full
-                          rounded-none
-                          border
-                          border-scoreboard-cream
-                          bg-scoreboard-cream
-                          text-xs
-                          font-black
-                          uppercase
-                          tracking-[0.10em]
-                          text-scoreboard-dark
-                          hover:bg-scoreboard-amber
-                          hover:text-scoreboard-dark
-                        `
-                      )}
-                    >
-                      Create Account
-                    </Link>
-                  </>
-                )}
+  {/* THE CAGE */}
+  {/* <Link
+    to="/book"
+    onClick={closeMobileMenu}
+    className="
+      flex
+      min-h-12
+      w-full
+      items-center
+      justify-center
+      border
+      border-scoreboard-cream
+      bg-scoreboard-cream
+      px-5
+      py-3
+      text-sm
+      font-black
+      uppercase
+      tracking-[0.16em]
+      text-scoreboard-dark
+      transition-colors
+      hover:border-scoreboard-amber
+      hover:bg-scoreboard-amber
+    "
+  >
+    theCage
+  </Link> */}
 
-              </div>
-            )}
+  {/* GAMEON */}
+  {/* <a
+    href={GAMEON_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={closeMobileMenu}
+    className="
+      flex
+      min-h-12
+      w-full
+      items-center
+      justify-center
+      border
+      border-scoreboard-amber
+      bg-scoreboard-amber
+      px-5
+      py-3
+      text-sm
+      font-black
+      uppercase
+      tracking-[0.16em]
+      text-scoreboard-dark
+      transition-colors
+      hover:border-scoreboard-cream
+      hover:bg-scoreboard-cream
+    "
+  >
+    GameOn
+  </a> */}
 
-          </div>
-        )}
+</div>
+    </nav>
+
+  </div>
+)}
 
       </div>
 

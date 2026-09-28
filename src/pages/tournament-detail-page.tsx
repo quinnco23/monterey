@@ -28,6 +28,7 @@ type Division = {
   age_group: string
   classification: string | null
   max_teams: number | null
+  registration_fee_cents: number
 }
 
 type TournamentTeam = {
@@ -146,7 +147,8 @@ export function TournamentDetailPage() {
             name,
             age_group,
             classification,
-            max_teams
+            max_teams,
+            registration_fee_cents
           `)
           .eq("tournament_id", tournamentId)
           .eq("active", true)
@@ -294,10 +296,14 @@ export function TournamentDetailPage() {
   const startDate = new Date(
     `${tournament.start_date}T12:00:00`
   )
-
+  
   const endDate = new Date(
     `${tournament.end_date}T12:00:00`
   )
+  
+  const isSingleDay =
+    tournament.start_date ===
+    tournament.end_date
 
   const mapLocation = [
     tournament.location_name,
@@ -337,22 +343,32 @@ export function TournamentDetailPage() {
 
               <div className="mt-6 flex flex-wrap gap-5 text-sm text-scoreboard-muted">
 
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-scoreboard-amber" />
+              <div className="flex items-center gap-2">
+  <CalendarDays className="h-4 w-4 text-scoreboard-amber" />
 
-                  {startDate.toLocaleDateString([], {
-                    month: "long",
-                    day: "numeric",
-                  })}
+  {isSingleDay ? (
+    startDate.toLocaleDateString([], {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+  ) : (
+    <>
+      {startDate.toLocaleDateString([], {
+        month: "long",
+        day: "numeric",
+      })}
 
-                  {" – "}
+      {" – "}
 
-                  {endDate.toLocaleDateString([], {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
+      {endDate.toLocaleDateString([], {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })}
+    </>
+  )}
+</div>
 
                 {(tournament.city || tournament.state) && (
                   <div className="flex items-center gap-2">
@@ -513,21 +529,49 @@ export function TournamentDetailPage() {
             </button>
 
             {divisions.map((division) => (
-              <button
-                key={division.id}
-                type="button"
-                onClick={() =>
-                  setSelectedDivision(division.id)
-                }
-                className={
-                  selectedDivision === division.id
-                    ? "bg-scoreboard-amber px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-scoreboard-dark"
-                    : "border border-scoreboard-cream/30 px-4 py-2 text-xs font-black uppercase tracking-[0.12em]"
-                }
-              >
-                {division.age_group}
-              </button>
-            ))}
+  <div
+    key={division.id}
+    className="
+      flex
+      items-center
+      justify-between
+      gap-4
+      border-b
+      border-scoreboard-cream/15
+      py-3
+      last:border-b-0
+    "
+  >
+    <div>
+      <p className="font-black uppercase">
+        {division.age_group}
+      </p>
+
+      <p className="text-sm text-scoreboard-muted">
+        {division.name}
+      </p>
+    </div>
+
+    <div className="text-right">
+      <p className="scoreboard-label text-scoreboard-amber">
+        Entry Fee
+      </p>
+
+      <p className="mt-1 font-black">
+        {new Intl.NumberFormat(
+          "en-US",
+          {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0,
+          }
+        ).format(
+          division.registration_fee_cents / 100
+        )}
+      </p>
+    </div>
+  </div>
+))}
 
           </div>
         )}
@@ -557,9 +601,9 @@ export function TournamentDetailPage() {
       {division.age_group}
     </p>
 
-    <p className="text-sm text-scoreboard-muted">
+    {/* <p className="text-sm text-scoreboard-muted">
       {division.name}
-    </p>
+    </p> */}
   </div>
 ))}
 

@@ -244,21 +244,33 @@ return (
 
               <span className="text-scoreboard-amber">
 
-                {new Date(
-                  `${featuredTournament.start_date}T12:00:00`
-                ).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                })}
+              {featuredTournament.start_date ===
+featuredTournament.end_date ? (
+  new Date(
+    `${featuredTournament.start_date}T12:00:00`
+  ).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  })
+) : (
+  <>
+    {new Date(
+      `${featuredTournament.start_date}T12:00:00`
+    ).toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    })}
 
-                {" – "}
+    {" – "}
 
-                {new Date(
-                  `${featuredTournament.end_date}T12:00:00`
-                ).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                })}
+    {new Date(
+      `${featuredTournament.end_date}T12:00:00`
+    ).toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    })}
+  </>
+)}
 
               </span>
 

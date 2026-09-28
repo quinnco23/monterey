@@ -98,55 +98,7 @@ export function TournamentsPage() {
           }
         )
 
-    // ORGANIZATION SCHEDULE TOURNAMENTS
-    // Only load these when signed in.
-    const organizationTournamentQuery =
-      user
-        ? supabase
-            .from("organization_events")
-            .select(`
-              id,
-              organization_id,
-              team_id,
-              title,
-              description,
-              start_time,
-              end_time,
-              location_name,
-              status,
-
-              organizations (
-                id,
-                name
-              ),
-
-              teams (
-                id,
-                name,
-                age_group
-              )
-            `)
-            .eq(
-              "event_type",
-              "tournament"
-            )
-            .eq(
-              "status",
-              "scheduled"
-            )
-            .or(
-              `end_time.gte.${now},and(end_time.is.null,start_time.gte.${now})`
-            )
-            .order(
-              "start_time",
-              {
-                ascending: true,
-              }
-            )
-        : Promise.resolve({
-            data: [],
-            error: null,
-          })
+   
 
 
           let registeredIds = new Set<string>()
@@ -215,14 +167,8 @@ if (user) {
 setRegisteredTournamentIds(
   registeredIds
 )
-    const [
-      tournamentResult,
-      organizationTournamentResult,
-    ] =
-      await Promise.all([
-        tournamentQuery,
-        organizationTournamentQuery,
-      ])
+const tournamentResult =
+await tournamentQuery
 
     if (tournamentResult.error) {
       setError(
@@ -232,16 +178,7 @@ setRegisteredTournamentIds(
       return
     }
 
-    if (
-      organizationTournamentResult.error
-    ) {
-      setError(
-        organizationTournamentResult
-          .error.message
-      )
-      setLoading(false)
-      return
-    }
+    
 
     const platformListings:
       TournamentListing[] =
@@ -284,71 +221,18 @@ setRegisteredTournamentIds(
         })
       )
 
-    const organizationListings:
-      TournamentListing[] =
-      (
-        organizationTournamentResult
-          .data ?? []
-      ).map((event: any) => ({
-        id:
-          event.id,
 
-        source:
-          "organization_event",
 
-        name:
-          event.title,
-
-        description:
-          event.description ?? null,
-
-        startDate:
-          event.start_time,
-
-        endDate:
-          event.end_time,
-
-        location:
-          event.location_name ?? null,
-
-        status:
-          event.status,
-
-        organizationId:
-          event.organization_id,
-
-        organizationName:
-          event.organizations?.name,
-
-        teamId:
-          event.team_id ?? undefined,
-
-        teamName:
-          event.teams
-            ? [
-                event.teams.age_group,
-                event.teams.name,
-              ]
-                .filter(Boolean)
-                .join(" ")
-            : undefined,
-
-        registerable:
-          false,
-      }))
-
-    const combined = [
-      ...platformListings,
-      ...organizationListings,
-    ].sort(
-      (a, b) =>
-        new Date(
-          a.startDate
-        ).getTime() -
-        new Date(
-          b.startDate
-        ).getTime()
-    )
+      const combined =
+      platformListings.sort(
+        (a, b) =>
+          new Date(
+            `${a.startDate}T12:00:00`
+          ).getTime() -
+          new Date(
+            `${b.startDate}T12:00:00`
+          ).getTime()
+      )
 
     setTournaments(combined)
     setLoading(false)
@@ -468,64 +352,58 @@ setRegisteredTournamentIds(
           tournaments.length > 0 && (
             <div className="grid gap-5 lg:grid-cols-2">
 
-              {tournaments.map(
-                (tournament) => {
+{tournaments.map(
+  (tournament) => {
 
-                  const isRegistered =
-  registeredTournamentIds.has(
-    tournament.id
-  )
+    const isRegistered =
+      registeredTournamentIds.has(
+        tournament.id
+      )
 
-                  const start =
-                    new Date(
-                      tournament
-                        .startDate
-                    )
+    const start =
+      new Date(
+        `${tournament.startDate}T12:00:00`
+      )
 
-                  const end =
-                    tournament.endDate
-                      ? new Date(
-                          tournament
-                            .endDate
-                        )
-                      : null
+    const end =
+      tournament.endDate
+        ? new Date(
+            `${tournament.endDate}T12:00:00`
+          )
+        : null
 
-                  const dateLabel =
-                    end
-                      ? `${start.toLocaleDateString(
-                          [],
-                          {
-                            month:
-                              "short",
-                            day:
-                              "numeric",
-                          }
-                        )} – ${end.toLocaleDateString(
-                          [],
-                          {
-                            month:
-                              "short",
-                            day:
-                              "numeric",
-                            year:
-                              "numeric",
-                          }
-                        )}`
-                      : start.toLocaleDateString(
-                          [],
-                          {
-                            month:
-                              "short",
-                            day:
-                              "numeric",
-                            year:
-                              "numeric",
-                          }
-                        )
+    const sameDay =
+      tournament.endDate ===
+      tournament.startDate
+
+    const dateLabel =
+      !end || sameDay
+        ? start.toLocaleDateString(
+            [],
+            {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }
+          )
+        : `${start.toLocaleDateString(
+            [],
+            {
+              month: "short",
+              day: "numeric",
+            }
+          )} – ${end.toLocaleDateString(
+            [],
+            {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }
+          )}`
 
                   return (
                     <article
-                      key={`${tournament.source}-${tournament.id}`}
+                    key={tournament.id}
                       className="
                         border
                         border-scoreboard-cream/25

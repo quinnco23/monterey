@@ -437,7 +437,7 @@ import {
                 <div className="mt-8">
   
                   <p className="text-sm leading-6 text-scoreboard-muted">
-                    Create an SCBC account or sign in to continue with tournament registration.
+                    Create an MBL account or sign in to continue with tournament registration.
                   </p>
   
   
