@@ -146,13 +146,18 @@ if (user) {
     if (teamIds.length > 0) {
       const { data: registrationData } =
         await supabase
-          .from("tournament_teams")
-          .select(`
-            tournament_id,
-            team_id,
-            status
-          `)
-          .in("team_id", teamIds)
+        .from("tournament_teams")
+        .select(`
+          tournament_id,
+          team_id,
+          status
+        `)
+        .in("team_id", teamIds)
+        .in("status", [
+          "registered",
+          "confirmed",
+          "active",
+        ])
 
       registeredIds =
         new Set(

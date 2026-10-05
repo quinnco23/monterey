@@ -674,7 +674,7 @@ featuredTournament.end_date ? (
     <div className="mt-8 divide-y divide-scoreboard-cream/20">
 
       {/* LEAGUE PLAY */}
-      <div className="flex gap-4 py-4">
+      {/* <div className="flex gap-4 py-4">
         <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-scoreboard-amber" />
 
         <div>
@@ -687,7 +687,7 @@ featuredTournament.end_date ? (
             culminating with league championship games in October.
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* TOURNAMENTS */}
       <div className="flex gap-4 py-4">
@@ -749,8 +749,7 @@ featuredTournament.end_date ? (
           </div>
 
           <p className="mt-1 text-sm leading-6 text-scoreboard-muted">
-            Book trainers, facilities, fields, and pitching
-            machines throughout the Monterey Bay.
+            Book training, equipment and facilities at the Berd Cage. 
           </p>
         </div>
       </div>
@@ -769,11 +768,11 @@ featuredTournament.end_date ? (
             <a className="scoreboard-label text-scoreboard-amber"   href="https://quinnglobal.com"
             target="_blank"
             rel="noopener noreferrer">
-              GameOn
+              GameOn 
             </a>
 
             <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-scoreboard-muted">
-              10U MBL Standings
+              Stats and Standings coming soon.
             </p>
           </div>
 
@@ -783,9 +782,9 @@ featuredTournament.end_date ? (
           </span>
         </div>
 
-        <div className="mt-6">
+        {/* <div className="mt-6">
 
-          <div className="grid grid-cols-[1fr_48px_48px_48px] border-b border-scoreboard-cream/20 pb-3">
+           <div className="grid grid-cols-[1fr_48px_48px_48px] border-b border-scoreboard-cream/20 pb-3">
             <div className="scoreboard-label">Team</div>
             <div className="scoreboard-label text-center">W</div>
             <div className="scoreboard-label text-center">L</div>
@@ -831,11 +830,11 @@ featuredTournament.end_date ? (
                 {pct}
               </div>
             </div>
-          ))}
+          ))} 
 
-        </div>
+        </div> */}
 
-        <div className="mt-7 border-t border-scoreboard-cream/25 pt-5">
+         <div className="mt-7 border-t border-scoreboard-cream/25 pt-5">
 
           <div className="mb-3 flex items-center justify-between">
             <span className="scoreboard-label">
@@ -871,7 +870,7 @@ featuredTournament.end_date ? (
             Final • 6 Innings • Polo Grounds
           </div>
 
-        </div>
+        </div> 
 
         <Link
           to="/scores"
@@ -925,7 +924,7 @@ featuredTournament.end_date ? (
 
             <div className="hidden text-right sm:block">
               <div className="scoreboard-label">
-                SCBC
+                
               </div>
 
               <div className="scoreboard-number mt-1 text-xl text-scoreboard-amber">

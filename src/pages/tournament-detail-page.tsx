@@ -528,7 +528,31 @@ export function TournamentDetailPage() {
               All
             </button>
 
-            {divisions.map((division) => (
+         
+
+          </div>
+        )}
+
+        {/* OVERVIEW */}
+        {activeTab === "overview" && (
+          <>
+          <div className="grid gap-6 lg:grid-cols-3">
+
+            <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
+
+              <Trophy className="h-6 w-6 text-scoreboard-amber" />
+
+              <p className="scoreboard-label mt-5">
+                Divisions
+              </p>
+
+              <div className="scoreboard-number mt-2 text-3xl">
+                {divisions.length}
+              </div>
+
+              <div className="mt-5 space-y-2">
+
+              {divisions.map((division) => (
   <div
     key={division.id}
     className="
@@ -570,40 +594,6 @@ export function TournamentDetailPage() {
         )}
       </p>
     </div>
-  </div>
-))}
-
-          </div>
-        )}
-
-        {/* OVERVIEW */}
-        {activeTab === "overview" && (
-          <>
-          <div className="grid gap-6 lg:grid-cols-3">
-
-            <div className="border border-scoreboard-cream/25 bg-scoreboard-green p-6">
-
-              <Trophy className="h-6 w-6 text-scoreboard-amber" />
-
-              <p className="scoreboard-label mt-5">
-                Divisions
-              </p>
-
-              <div className="scoreboard-number mt-2 text-3xl">
-                {divisions.length}
-              </div>
-
-              <div className="mt-5 space-y-2">
-
-              {divisions.map((division) => (
-  <div key={division.id}>
-    <p className="font-black uppercase">
-      {division.age_group}
-    </p>
-
-    {/* <p className="text-sm text-scoreboard-muted">
-      {division.name}
-    </p> */}
   </div>
 ))}
 

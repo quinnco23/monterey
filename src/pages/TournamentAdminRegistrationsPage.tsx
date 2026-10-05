@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
-import RegistrationReadinessState from "./RegistrationReadinessState"
+import RegistrationReadinessState, {
+  type ReadinessState,
+} from "./RegistrationReadinessState"
 
 
 
@@ -815,20 +817,27 @@ if (!roster) {
 }
 
 const canApprove =
+  (
+    registration.status === "submitted" ||
+    registration.status === "waitlisted"
+  ) &&
   blockers.length === 0
 
-  const readinessState:
-  | "approved"
-  | "ready"
-  | "blocked"
-  | "waitlisted" =
-  registration.status === "approved"
-    ? "approved"
-    : registration.status === "waitlisted"
-      ? "waitlisted"
-      : canApprove
-        ? "ready"
-        : "blocked"
+  let readinessState: ReadinessState
+
+if (registration.status === "approved") {
+  readinessState = "approved"
+} else if (registration.status === "waitlisted") {
+  readinessState = "waitlisted"
+} else if (registration.status === "declined") {
+  readinessState = "declined"
+} else if (registration.status === "withdrawn") {
+  readinessState = "withdrawn"
+} else if (canApprove) {
+  readinessState = "ready"
+} else {
+  readinessState = "blocked"
+}
 
                     return (
                       <article

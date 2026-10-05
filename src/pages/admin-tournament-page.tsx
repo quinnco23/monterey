@@ -223,6 +223,10 @@ export function AdminTournamentPage() {
     (team) => team.status === "approved"
   ).length
 
+  const withdrawnTeams = teams.filter(
+    (team) => team.status === "withdrawn"
+  ).length
+
   return (
     <main className="min-h-screen bg-scoreboard-dark text-scoreboard-cream">
 

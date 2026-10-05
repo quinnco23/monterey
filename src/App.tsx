@@ -102,6 +102,8 @@ import { PlatformInsuranceReviewPage } from "./pages/team-insurance-review-page"
 import PlatformAdminTournamentInvitePage from "./pages/platform-admin-tournament-Invite-page"
 import TournamentInviteLandingPage from "./tournament-invite-landing-page"
 
+import { OrganizationTournamentRegistrationPage } from "./pages/organization-tournament-registrations-page"
+
 
 
 export default function App() {
@@ -424,6 +426,15 @@ export default function App() {
     <PlatformInsuranceReviewPage />
   }
 />
+
+<Route
+  path="/dashboard/organizations/:organizationId/tournament-registrations/:registrationId"
+  element={
+    <OrganizationTournamentRegistrationPage />
+  }
+/>
+
+
 
 </Route>
 

@@ -167,10 +167,15 @@ export function EditPlayerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!organizationId || !teamId || !playerId) return
-
-    setSaving(true)
-    setError("")
+    if (
+      !organizationId ||
+      !teamId ||
+      !playerId ||
+      !rosterPlayerId
+    ) {
+      setError("Player roster record could not be found.")
+      return
+    }
 
     const { error: playerError } = await supabase
     .from("players")
@@ -191,20 +196,27 @@ export function EditPlayerPage() {
       return
     }
 
-    const {
-      data: updatedRoster,
-      error: rosterError,
-    } = await supabase
-      .from("team_players")
-      .update({
-        jersey_number: jerseyNumber || null,
-        primary_position: primaryPosition || null,
-        secondary_position: secondaryPosition || null,
-      })
-      .eq("team_id", teamId)
-      .eq("player_id", playerId)
-      .eq("active", true)
-      .select()
+    
+const {
+  data: updatedRoster,
+  error: rosterError,
+} = await supabase.rpc(
+  "update_roster_player_details",
+  {
+    target_roster_player_id:
+      rosterPlayerId,
+
+    target_jersey_number:
+      jerseyNumber,
+
+    target_primary_position:
+      primaryPosition,
+
+    target_secondary_position:
+      secondaryPosition,
+  }
+)
+
 
   
 

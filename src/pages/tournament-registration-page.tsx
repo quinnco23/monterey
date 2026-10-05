@@ -95,9 +95,10 @@ type TournamentReadiness = {
   roster_status?: string | null
 
   active_eligible_player_count?: number
-  minimum_roster_players?: number
+minimum_roster_players?: number
+maximum_roster_players?: number
 
-  reasons?: string[]
+reasons?: string[]
 }
 
 type TournamentRosterPreviewPlayer = {
@@ -845,13 +846,56 @@ export function TournamentRegistrationPage() {
               "MINIMUM_ROSTER_NOT_MET"
             )
           ) {
+            const currentPlayers =
+              readiness
+                ?.active_eligible_player_count ??
+              0
+          
+            const minimumPlayers =
+              readiness
+                ?.minimum_roster_players ??
+              10
+          
+            const playersNeeded =
+              Math.max(
+                minimumPlayers - currentPlayers,
+                0
+              )
+          
             setTournamentRosterError(
-              `The team does not meet the minimum roster requirement.`
+              `This team has ${currentPlayers} eligible players. ` +
+                `A minimum of ${minimumPlayers} is required. ` +
+                `Add ${playersNeeded} more ` +
+                `player${playersNeeded === 1 ? "" : "s"} to continue.`
             )
-
+          
             return
           }
-
+          if (
+            reasons.includes(
+              "MAXIMUM_ROSTER_EXCEEDED"
+            )
+          ) {
+            const currentPlayers =
+              readiness
+                ?.active_eligible_player_count ??
+              0
+          
+            const maximumPlayers =
+              readiness
+                ?.maximum_roster_players ??
+              14
+          
+            setTournamentRosterError(
+              `This team has ${currentPlayers} eligible players. ` +
+                `This division allows a maximum of ${maximumPlayers}. ` +
+                `Remove ${currentPlayers - maximumPlayers} ` +
+                `player${currentPlayers - maximumPlayers === 1 ? "" : "s"} ` +
+                `before continuing.`
+            )
+          
+            return
+          }
 
           setTournamentRosterError(
             "This team does not currently have a tournament-ready roster."
@@ -1409,6 +1453,30 @@ export function TournamentRegistrationPage() {
           return
         }
 
+
+if (
+  reasons.includes(
+    "MAXIMUM_ROSTER_EXCEEDED"
+  )
+) {
+  const currentPlayers =
+    readiness
+      ?.active_eligible_player_count ??
+    0
+
+  const maximumPlayers =
+    readiness
+      ?.maximum_roster_players ??
+    14
+
+  showRegistrationError(
+    `This team has ${currentPlayers} active, eligible ` +
+      `player${currentPlayers === 1 ? "" : "s"}. ` +
+      `This division allows a maximum of ${maximumPlayers}.`
+  )
+
+  return
+}
 
         if (
           reasons.includes(
